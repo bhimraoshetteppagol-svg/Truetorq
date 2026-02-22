@@ -1468,8 +1468,9 @@ app.get('/api/health', (req, res) => {
 });
 
 // Start server
-app.listen(PORT, () => {
-  console.log(`✅ Backend server running on http://localhost:${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`✅ Backend server running on http://0.0.0.0:${PORT}`);
+  console.log(`✅ Backend accessible on http://localhost:${PORT}`);
   console.log(`📊 MongoDB connection: ${mongoose.connection.readyState === 1 ? 'Connected' : 'Connecting...'}`);
 });
 

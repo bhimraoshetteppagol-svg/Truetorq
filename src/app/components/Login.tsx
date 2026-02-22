@@ -93,10 +93,10 @@ export function Login() {
       {/* Diagonal stripes background */}
       <div className="absolute inset-0 z-0 opacity-5 pointer-events-none bg-[linear-gradient(45deg,#000_25%,transparent_25%,transparent_75%,#000_75%,#000),linear-gradient(45deg,#000_25%,transparent_25%,transparent_75%,#000_75%,#000)] bg-[length:20px_20px] bg-[position:0_0,10px_10px]" />
 
-      <div className="container mx-auto px-6 relative z-10">
+      <div className="container mx-auto px-4 sm:px-6 relative z-10 py-8 sm:py-0">
         <div className="max-w-md mx-auto">
           {/* Back to Home Link */}
-          <div className="mb-8 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-neutral-500">
+          <div className="mb-6 sm:mb-8 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-neutral-500">
             <Link to="/" className="hover:text-black hover:underline">Home</Link>
             <ChevronRight size={12} />
             <span className="text-black">Login</span>
@@ -107,12 +107,12 @@ export function Login() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
-            className="mb-12 text-center"
+            className="mb-8 sm:mb-12 text-center"
           >
-            <h1 className="font-black uppercase tracking-tighter text-4xl md:text-5xl mb-4">
+            <h1 className="font-black uppercase tracking-tighter text-3xl sm:text-4xl md:text-5xl mb-3 sm:mb-4">
               <span className="text-[#30578e]">TT</span> Login
             </h1>
-            <div className="w-24 h-2 bg-[#30578e] mx-auto"></div>
+            <div className="w-20 sm:w-24 h-1.5 sm:h-2 bg-[#30578e] mx-auto"></div>
           </motion.div>
 
           {/* Login Form Card */}
@@ -120,12 +120,12 @@ export function Login() {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.1 }}
-            className="border-4 border-black bg-white p-8 md:p-12 shadow-[12px_12px_0px_0px_#30578e]"
+            className="border-4 border-black bg-white p-6 sm:p-8 md:p-12 shadow-[8px_8px_0px_0px_#30578e] sm:shadow-[12px_12px_0px_0px_#30578e]"
           >
             {/* Sign in Header */}
-            <div className="mb-8">
-              <h2 className="text-2xl font-black uppercase mb-2 flex items-center gap-2">
-                Sign in to
+            <div className="mb-6 sm:mb-8">
+              <h2 className="text-xl sm:text-2xl font-black uppercase mb-2 flex flex-wrap items-center gap-2">
+                <span>Sign in to</span>
                 <span className="text-[#30578e]">•</span>
                 <span className="text-[#30578e]">TrueTorq</span>
               </h2>
@@ -139,17 +139,17 @@ export function Login() {
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="mb-6 p-4 bg-red-50 border-2 border-red-500 text-red-700 font-mono text-sm"
+                className="mb-4 sm:mb-6 p-3 sm:p-4 bg-red-50 border-2 border-red-500 text-red-700 font-mono text-xs sm:text-sm"
               >
                 {error}
               </motion.div>
             )}
 
             {/* Login Form */}
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
               {/* Email Field */}
               <div className="space-y-2">
-                <label htmlFor="email" className="block font-bold uppercase text-sm tracking-wide">
+                <label htmlFor="email" className="block font-bold uppercase text-xs sm:text-sm tracking-wide">
                   Email Address
                 </label>
                 <input
@@ -160,13 +160,13 @@ export function Login() {
                   onChange={handleChange}
                   required
                   placeholder="Enter your email"
-                  className="w-full bg-neutral-100 border-2 border-black p-4 focus:outline-none focus:bg-black focus:text-white transition-colors font-mono text-sm"
+                  className="w-full bg-neutral-100 border-2 border-black p-3 sm:p-4 focus:outline-none focus:bg-black focus:text-white transition-colors font-mono text-sm"
                 />
               </div>
 
               {/* Password Field */}
               <div className="space-y-2">
-                <label htmlFor="password" className="block font-bold uppercase text-sm tracking-wide">
+                <label htmlFor="password" className="block font-bold uppercase text-xs sm:text-sm tracking-wide">
                   Password
                 </label>
                 <div className="relative">
@@ -178,18 +178,18 @@ export function Login() {
                     onChange={handleChange}
                     required
                     placeholder="Enter your password"
-                    className="w-full bg-neutral-100 border-2 border-black p-4 pr-12 focus:outline-none focus:bg-black focus:text-white transition-colors font-mono text-sm"
+                    className="w-full bg-neutral-100 border-2 border-black p-3 sm:p-4 pr-10 sm:pr-12 focus:outline-none focus:bg-black focus:text-white transition-colors font-mono text-sm"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 p-2 hover:bg-neutral-200 transition-colors"
+                    className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 p-1.5 sm:p-2 hover:bg-neutral-200 transition-colors"
                     aria-label={showPassword ? 'Hide password' : 'Show password'}
                   >
                     {showPassword ? (
-                      <EyeOff size={20} className="text-neutral-600" />
+                      <EyeOff size={18} className="sm:w-5 sm:h-5 text-neutral-600" />
                     ) : (
-                      <Eye size={20} className="text-neutral-600" />
+                      <Eye size={18} className="sm:w-5 sm:h-5 text-neutral-600" />
                     )}
                   </button>
                 </div>
@@ -210,21 +210,21 @@ export function Login() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-black text-white font-black uppercase tracking-widest py-4 border-2 border-black hover:bg-white hover:text-black transition-all shadow-[4px_4px_0px_0px_#30578e] hover:shadow-[6px_6px_0px_0px_#30578e] hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-[4px_4px_0px_0px_#30578e]"
+                className="w-full bg-black text-white font-black uppercase tracking-widest py-3 sm:py-4 text-sm sm:text-base border-2 border-black hover:bg-white hover:text-black transition-all shadow-[4px_4px_0px_0px_#30578e] hover:shadow-[6px_6px_0px_0px_#30578e] hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-[4px_4px_0px_0px_#30578e]"
               >
                 {loading ? 'Signing in...' : 'Sign in'}
               </button>
             </form>
 
             {/* Sign Up Link */}
-            <div className="mt-8 pt-8 border-t-2 border-black text-center">
+            <div className="mt-6 sm:mt-8 pt-6 sm:pt-8 border-t-2 border-black text-center">
               <p className="font-mono text-xs text-neutral-500 mb-2 uppercase tracking-widest">
                 Don't have an account?
               </p>
               <button
                 type="button"
                 onClick={(e) => e.preventDefault()}
-                className="font-bold uppercase text-sm text-[#30578e] hover:text-black hover:underline transition-colors"
+                className="font-bold uppercase text-xs sm:text-sm text-[#30578e] hover:text-black hover:underline transition-colors"
               >
                 Sign Up
               </button>

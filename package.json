@@ -7,7 +7,10 @@
     "build": "vite build",
     "dev": "vite",
     "test:mongodb": "node test-mongodb-connection.mjs",
-    "server": "node server.js"
+    "server": "node server.js",
+    "ngrok:frontend": "ngrok http 7000",
+    "ngrok:backend": "ngrok http 5000",
+    "tunnel:setup": "echo Starting ngrok tunnels... && echo Frontend: Run npm run ngrok:frontend in a separate terminal && echo Backend: Run npm run ngrok:backend in a separate terminal"
   },
   "dependencies": {
     "@emotion/react": "11.14.0",
@@ -76,6 +79,8 @@
   "devDependencies": {
     "@tailwindcss/vite": "4.1.12",
     "@vitejs/plugin-react": "4.7.0",
+    "concurrently": "^8.2.2",
+    "ngrok": "^5.0.0-beta.2",
     "tailwindcss": "4.1.12",
     "vite": "6.3.5"
   },

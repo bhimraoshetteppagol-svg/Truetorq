@@ -492,34 +492,34 @@ export function Admin() {
     <div className={`min-h-screen font-sans ${theme === 'dark' ? 'bg-black text-white' : 'bg-white text-black'}`}>
       {/* Top Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-50 border-b-4 border-black bg-white">
-        <div className="container mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <span className="text-2xl font-black uppercase">
+        <div className="container mx-auto px-3 sm:px-6 h-14 sm:h-16 flex items-center justify-between">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <span className="text-lg sm:text-xl md:text-2xl font-black uppercase">
               <span className="text-[#30578e]">TT</span> Admin
             </span>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             <button
               onClick={handleLogout}
-              className="px-4 py-2 border-2 border-black bg-black text-white hover:bg-white hover:text-black transition-colors font-bold uppercase text-sm"
+              className="px-2 sm:px-4 py-1.5 sm:py-2 border-2 border-black bg-black text-white hover:bg-white hover:text-black transition-colors font-bold uppercase text-xs sm:text-sm flex items-center gap-1 sm:gap-2"
             >
-              <LogOut size={16} className="inline mr-2" />
-              Logout
+              <LogOut size={14} className="sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">Logout</span>
             </button>
           </div>
         </div>
       </nav>
       
       {/* Main Content */}
-      <main className="pt-16 pb-24">
-        <div className="container mx-auto px-6 py-8">
+      <main className="pt-14 sm:pt-16 pb-20 sm:pb-24">
+        <div className="container mx-auto px-3 sm:px-6 py-4 sm:py-6">
           {/* Section Navigation */}
-          <div className="mb-8 flex flex-wrap gap-4 border-b-4 border-black pb-4">
+          <div className="mb-4 sm:mb-6 flex flex-wrap gap-2 sm:gap-3 border-b-4 border-black pb-2 sm:pb-3 overflow-x-auto">
             <button
               onClick={() => handleSectionClick('leads')}
-              className={`px-6 py-3 border-2 border-black font-black uppercase text-sm transition-all ${
+              className={`px-3 sm:px-5 py-1.5 sm:py-2.5 border-2 border-black font-black uppercase text-[10px] sm:text-xs transition-all whitespace-nowrap ${
                 activeSection === 'leads'
-                  ? 'bg-black text-white shadow-[4px_4px_0px_0px_#30578e]'
+                  ? 'bg-black text-white shadow-[3px_3px_0px_0px_#30578e]'
                   : 'bg-white text-black hover:bg-neutral-100'
               }`}
             >
@@ -527,9 +527,9 @@ export function Admin() {
             </button>
             <button
               onClick={() => handleSectionClick('users')}
-              className={`px-6 py-3 border-2 border-black font-black uppercase text-sm transition-all ${
+              className={`px-3 sm:px-5 py-1.5 sm:py-2.5 border-2 border-black font-black uppercase text-[10px] sm:text-xs transition-all whitespace-nowrap ${
                 activeSection === 'users'
-                  ? 'bg-black text-white shadow-[4px_4px_0px_0px_#30578e]'
+                  ? 'bg-black text-white shadow-[3px_3px_0px_0px_#30578e]'
                   : 'bg-white text-black hover:bg-neutral-100'
               }`}
             >
@@ -537,9 +537,9 @@ export function Admin() {
             </button>
             <button
               onClick={() => handleSectionClick('employees')}
-              className={`px-6 py-3 border-2 border-black font-black uppercase text-sm transition-all ${
+              className={`px-3 sm:px-5 py-1.5 sm:py-2.5 border-2 border-black font-black uppercase text-[10px] sm:text-xs transition-all whitespace-nowrap ${
                 activeSection === 'employees'
-                  ? 'bg-black text-white shadow-[4px_4px_0px_0px_#30578e]'
+                  ? 'bg-black text-white shadow-[3px_3px_0px_0px_#30578e]'
                   : 'bg-white text-black hover:bg-neutral-100'
               }`}
             >
@@ -547,9 +547,9 @@ export function Admin() {
             </button>
             <button
               onClick={() => handleSectionClick('products')}
-              className={`px-6 py-3 border-2 border-black font-black uppercase text-sm transition-all ${
+              className={`px-3 sm:px-5 py-1.5 sm:py-2.5 border-2 border-black font-black uppercase text-[10px] sm:text-xs transition-all whitespace-nowrap ${
                 activeSection === 'products'
-                  ? 'bg-black text-white shadow-[4px_4px_0px_0px_#30578e]'
+                  ? 'bg-black text-white shadow-[3px_3px_0px_0px_#30578e]'
                   : 'bg-white text-black hover:bg-neutral-100'
               }`}
             >
@@ -558,32 +558,32 @@ export function Admin() {
           </div>
           
           {/* Content Area */}
-          <div className="mt-8">
+          <div className="mt-4 sm:mt-6">
             {activeSection === 'leads' && (
               <div>
-                <div className="mb-6 flex items-center justify-between">
+                <div className="mb-4 sm:mb-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                   <div>
-                    <h2 className="text-3xl font-black uppercase mb-2">Lead Management</h2>
-                    <div className="font-mono text-sm">
+                    <h2 className="text-xl sm:text-2xl font-black uppercase mb-1 sm:mb-1.5">Lead Management</h2>
+                    <div className="font-mono text-[10px] sm:text-xs whitespace-nowrap overflow-x-auto">
                       Total: {leadStats.total} | Pending: {leadStats.pending} | Assigned: {leadStats.assigned} | Completed: {leadStats.completed}
                     </div>
                   </div>
                 </div>
                 
                 {leads.length === 0 ? (
-                  <div className="text-center py-12 border-4 border-black">
-                    <p className="font-mono text-lg">No leads found</p>
+                  <div className="text-center py-8 sm:py-10 border-4 border-black">
+                    <p className="font-mono text-sm sm:text-base">No leads found</p>
                   </div>
                 ) : (
-                  <div className="space-y-4">
+                  <div className="space-y-2 sm:space-y-3">
                     {leads.map((lead) => (
-                      <div key={lead._id} className="border-4 border-black p-6 bg-white shadow-[8px_8px_0px_0px_#30578e]">
-                        <div className="flex flex-col md:flex-row justify-between gap-4">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-4 mb-2">
-                              <span className="font-mono text-xs">{formatDate(lead.createdAt)}</span>
+                      <div key={lead._id} className="border-4 border-black p-3 sm:p-5 bg-white shadow-[6px_6px_0px_0px_#30578e]">
+                        <div className="flex flex-col md:flex-row justify-between gap-2 sm:gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-1 sm:mb-1.5">
+                              <span className="font-mono text-[9px] sm:text-[10px]">{formatDate(lead.createdAt)}</span>
                               <span
-                                className="px-3 py-1 text-xs font-bold uppercase"
+                                className="px-2 sm:px-2.5 py-0.5 text-[9px] sm:text-[10px] font-bold uppercase"
                                 style={{ 
                                   backgroundColor: getStatusColor(lead.status),
                                   color: 'white'
@@ -592,16 +592,16 @@ export function Admin() {
                                 {lead.status}
                               </span>
                             </div>
-                            <div className="font-black text-xl mb-2">{lead.productName}</div>
-                            <div className="font-mono text-sm space-y-1">
-                              <div>Requester: {lead.requesterEmail}</div>
+                            <div className="font-black text-sm sm:text-base mb-1 sm:mb-1.5 break-words">{lead.productName}</div>
+                            <div className="font-mono text-[10px] sm:text-xs space-y-0.5">
+                              <div className="break-words">Requester: {lead.requesterEmail}</div>
                               <div>Contact: {formatPhone(lead.contactNumber)}</div>
                               <div>Quantity: {lead.quantity}</div>
-                              {lead.assignedTo && <div>Assigned To: {lead.assignedTo}</div>}
+                              {lead.assignedTo && <div className="break-words">Assigned To: {lead.assignedTo}</div>}
                             </div>
                           </div>
-                          <div className="flex flex-col items-end gap-2">
-                            <div className="font-mono text-xs text-neutral-500">ID: {lead._id}</div>
+                          <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-start gap-2 sm:gap-1.5">
+                            <div className="font-mono text-[9px] sm:text-[10px] text-neutral-500 break-all">{lead._id.substring(0, 8)}...</div>
                             {lead.quotation && (
                               <button
                                 onClick={(e) => {
@@ -609,38 +609,38 @@ export function Admin() {
                                   e.stopPropagation();
                                   handleViewQuotation(lead._id);
                                 }}
-                                className="text-xs font-bold text-[#30578e] hover:underline cursor-pointer"
+                                className="text-[9px] sm:text-[10px] font-bold text-[#30578e] hover:underline cursor-pointer whitespace-nowrap"
                                 type="button"
                               >
-                                ✓ Quotation Generated
+                                ✓ Quotation
                               </button>
                             )}
-                            <div className="flex gap-2">
+                            <div className="flex gap-1 sm:gap-1.5">
                               <button
                                 onClick={() => handleAssign(lead)}
                                 disabled={lead.status !== 'pending'}
-                                className={`p-2 border-2 border-black ${
+                                className={`p-1 sm:p-1.5 border-2 border-black ${
                                   lead.status === 'pending'
                                     ? 'bg-white hover:bg-black hover:text-white'
                                     : 'bg-neutral-200 opacity-50 cursor-not-allowed'
                                 } transition-colors`}
                                 title="Assign Lead"
                               >
-                                <UserPlus size={16} />
+                                <UserPlus size={12} className="sm:w-[13px] sm:h-[13px]" />
                               </button>
                               <button
                                 onClick={() => handleViewDetails(lead)}
-                                className="p-2 border-2 border-black bg-white hover:bg-black hover:text-white transition-colors"
+                                className="p-1 sm:p-1.5 border-2 border-black bg-white hover:bg-black hover:text-white transition-colors"
                                 title="View Details"
                               >
-                                <Eye size={16} />
+                                <Eye size={12} className="sm:w-[13px] sm:h-[13px]" />
                               </button>
                               <button
                                 onClick={() => handleDeleteLead(lead._id)}
-                                className="p-2 border-2 border-black bg-white hover:bg-red-600 hover:text-white transition-colors"
+                                className="p-1 sm:p-1.5 border-2 border-black bg-white hover:bg-red-600 hover:text-white transition-colors"
                                 title="Delete Lead"
                               >
-                                <Trash2 size={16} />
+                                <Trash2 size={12} className="sm:w-[13px] sm:h-[13px]" />
                               </button>
                             </div>
                           </div>
@@ -654,41 +654,41 @@ export function Admin() {
             
             {activeSection === 'users' && (
               <div>
-                <div className="mb-6 flex items-center justify-between">
-                  <h2 className="text-3xl font-black uppercase">User Management</h2>
+                <div className="mb-4 sm:mb-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                  <h2 className="text-xl sm:text-2xl font-black uppercase">User Management</h2>
                   <button
                     onClick={handleAdd}
-                    className="px-6 py-3 border-2 border-black bg-black text-white hover:bg-white hover:text-black transition-colors font-bold uppercase text-sm flex items-center gap-2"
+                    className="px-3 sm:px-5 py-1.5 sm:py-2.5 border-2 border-black bg-black text-white hover:bg-white hover:text-black transition-colors font-bold uppercase text-[10px] sm:text-xs flex items-center gap-1 sm:gap-1.5 w-full sm:w-auto justify-center"
                   >
-                    <Plus size={16} />
+                    <Plus size={12} className="sm:w-[13px] sm:h-[13px]" />
                     Add User
                   </button>
                 </div>
                 
                 {users.length === 0 ? (
-                  <div className="text-center py-12 border-4 border-black">
-                    <p className="font-mono text-lg">No users found</p>
+                  <div className="text-center py-8 sm:py-10 border-4 border-black">
+                    <p className="font-mono text-sm sm:text-base">No users found</p>
                   </div>
                 ) : (
-                  <div className="space-y-4">
+                  <div className="space-y-2 sm:space-y-3">
                     {users.map((userItem) => (
-                      <div key={userItem._id} className="border-4 border-black p-6 bg-white flex items-center justify-between">
-                        <div>
-                          <div className="font-black text-xl">{userItem.email}</div>
-                          <div className="font-mono text-sm text-neutral-500">{userItem.role}</div>
+                      <div key={userItem._id} className="border-4 border-black p-3 sm:p-5 bg-white flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
+                        <div className="flex-1 min-w-0">
+                          <div className="font-black text-sm sm:text-base break-words">{userItem.email}</div>
+                          <div className="font-mono text-[10px] sm:text-xs text-neutral-500">{userItem.role}</div>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex gap-1 sm:gap-1.5 justify-end sm:justify-start">
                           <button
                             onClick={() => handleEdit(userItem)}
-                            className="p-2 border-2 border-black bg-white hover:bg-black hover:text-white transition-colors"
+                            className="p-1 sm:p-1.5 border-2 border-black bg-white hover:bg-black hover:text-white transition-colors"
                           >
-                            <Edit size={16} />
+                            <Edit size={12} className="sm:w-[13px] sm:h-[13px]" />
                           </button>
                           <button
                             onClick={() => handleDelete(userItem._id)}
-                            className="p-2 border-2 border-black bg-white hover:bg-red-600 hover:text-white transition-colors"
+                            className="p-1 sm:p-1.5 border-2 border-black bg-white hover:bg-red-600 hover:text-white transition-colors"
                           >
-                            <Trash2 size={16} />
+                            <Trash2 size={12} className="sm:w-[13px] sm:h-[13px]" />
                           </button>
                         </div>
                       </div>
@@ -700,41 +700,41 @@ export function Admin() {
             
             {activeSection === 'employees' && (
               <div>
-                <div className="mb-6 flex items-center justify-between">
-                  <h2 className="text-3xl font-black uppercase">Employee Management</h2>
+                <div className="mb-4 sm:mb-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                  <h2 className="text-xl sm:text-2xl font-black uppercase">Employee Management</h2>
                   <button
                     onClick={handleAdd}
-                    className="px-6 py-3 border-2 border-black bg-black text-white hover:bg-white hover:text-black transition-colors font-bold uppercase text-sm flex items-center gap-2"
+                    className="px-3 sm:px-5 py-1.5 sm:py-2.5 border-2 border-black bg-black text-white hover:bg-white hover:text-black transition-colors font-bold uppercase text-[10px] sm:text-xs flex items-center gap-1 sm:gap-1.5 w-full sm:w-auto justify-center"
                   >
-                    <Plus size={16} />
+                    <Plus size={12} className="sm:w-[13px] sm:h-[13px]" />
                     Add Employee
                   </button>
                 </div>
                 
                 {employees.length === 0 ? (
-                  <div className="text-center py-12 border-4 border-black">
-                    <p className="font-mono text-lg">No employees found</p>
+                  <div className="text-center py-8 sm:py-10 border-4 border-black">
+                    <p className="font-mono text-sm sm:text-base">No employees found</p>
                   </div>
                 ) : (
-                  <div className="space-y-4">
+                  <div className="space-y-2 sm:space-y-3">
                     {employees.map((employee) => (
-                      <div key={employee._id} className="border-4 border-black p-6 bg-white flex items-center justify-between">
-                        <div>
-                          <div className="font-black text-xl">{employee.email}</div>
-                          <div className="font-mono text-sm text-neutral-500">{employee.role}</div>
+                      <div key={employee._id} className="border-4 border-black p-3 sm:p-5 bg-white flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
+                        <div className="flex-1 min-w-0">
+                          <div className="font-black text-sm sm:text-base break-words">{employee.email}</div>
+                          <div className="font-mono text-[10px] sm:text-xs text-neutral-500">{employee.role}</div>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex gap-1 sm:gap-1.5 justify-end sm:justify-start">
                           <button
                             onClick={() => handleEdit(employee)}
-                            className="p-2 border-2 border-black bg-white hover:bg-black hover:text-white transition-colors"
+                            className="p-1 sm:p-1.5 border-2 border-black bg-white hover:bg-black hover:text-white transition-colors"
                           >
-                            <Edit size={16} />
+                            <Edit size={12} className="sm:w-[13px] sm:h-[13px]" />
                           </button>
                           <button
                             onClick={() => handleDelete(employee._id)}
-                            className="p-2 border-2 border-black bg-white hover:bg-red-600 hover:text-white transition-colors"
+                            className="p-1 sm:p-1.5 border-2 border-black bg-white hover:bg-red-600 hover:text-white transition-colors"
                           >
-                            <Trash2 size={16} />
+                            <Trash2 size={12} className="sm:w-[13px] sm:h-[13px]" />
                           </button>
                         </div>
                       </div>
@@ -746,23 +746,23 @@ export function Admin() {
             
             {activeSection === 'products' && (
               <div>
-                <div className="mb-6 flex items-center justify-between">
-                  <h2 className="text-3xl font-black uppercase">Product Management</h2>
+                <div className="mb-4 sm:mb-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                  <h2 className="text-xl sm:text-2xl font-black uppercase">Product Management</h2>
                   <button
                     onClick={handleAdd}
-                    className="px-6 py-3 border-2 border-black bg-black text-white hover:bg-white hover:text-black transition-colors font-bold uppercase text-sm flex items-center gap-2"
+                    className="px-3 sm:px-5 py-1.5 sm:py-2.5 border-2 border-black bg-black text-white hover:bg-white hover:text-black transition-colors font-bold uppercase text-[10px] sm:text-xs flex items-center gap-1 sm:gap-1.5 w-full sm:w-auto justify-center"
                   >
-                    <Plus size={16} />
+                    <Plus size={12} className="sm:w-[13px] sm:h-[13px]" />
                     Add Product
                   </button>
                 </div>
                 
                 {products.length === 0 ? (
-                  <div className="text-center py-12 border-4 border-black">
-                    <p className="font-mono text-lg">No products found</p>
+                  <div className="text-center py-8 sm:py-10 border-4 border-black">
+                    <p className="font-mono text-sm sm:text-base">No products found</p>
                   </div>
                 ) : (
-                  <div className="space-y-4">
+                  <div className="space-y-2 sm:space-y-3">
                     {products.map((product) => {
                       const productName = product.productName || product.name || 'N/A';
                       const productDescription = product.productDescription || product.description || 'No description available';
@@ -770,38 +770,38 @@ export function Admin() {
                       const category = product.category || 'Uncategorized';
                       
                       return (
-                        <div key={product._id} className="border-4 border-black p-6 bg-white">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1 space-y-3">
+                        <div key={product._id} className="border-4 border-black p-3 sm:p-5 bg-white">
+                          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-0">
+                            <div className="flex-1 space-y-2 sm:space-y-2.5 min-w-0">
                               <div>
-                                <div className="font-mono text-xs text-neutral-500 uppercase mb-1">Product Name</div>
-                                <div className="font-black text-xl">{productName}</div>
+                                <div className="font-mono text-[9px] sm:text-[10px] text-neutral-500 uppercase mb-0.5">Product Name</div>
+                                <div className="font-black text-sm sm:text-base break-words">{productName}</div>
                               </div>
                               <div>
-                                <div className="font-mono text-xs text-neutral-500 uppercase mb-1">Category</div>
-                                <div className="font-mono text-sm font-bold">{category}</div>
+                                <div className="font-mono text-[9px] sm:text-[10px] text-neutral-500 uppercase mb-0.5">Category</div>
+                                <div className="font-mono text-[10px] sm:text-xs font-bold">{category}</div>
                               </div>
                               <div>
-                                <div className="font-mono text-xs text-neutral-500 uppercase mb-1">Price</div>
-                                <div className="font-mono text-sm font-bold">₹{price.toFixed(2)}</div>
+                                <div className="font-mono text-[9px] sm:text-[10px] text-neutral-500 uppercase mb-0.5">Price</div>
+                                <div className="font-mono text-[10px] sm:text-xs font-bold">₹{price.toFixed(2)}</div>
                               </div>
                               <div>
-                                <div className="font-mono text-xs text-neutral-500 uppercase mb-1">Product Description</div>
-                                <div className="font-mono text-sm">{productDescription}</div>
+                                <div className="font-mono text-[9px] sm:text-[10px] text-neutral-500 uppercase mb-0.5">Product Description</div>
+                                <div className="font-mono text-[10px] sm:text-xs break-words">{productDescription}</div>
                               </div>
                             </div>
-                            <div className="flex gap-2 ml-4">
+                            <div className="flex gap-1 sm:gap-1.5 sm:ml-3 justify-end sm:justify-start">
                               <button
                                 onClick={() => handleEdit(product)}
-                                className="p-2 border-2 border-black bg-white hover:bg-black hover:text-white transition-colors"
+                                className="p-1 sm:p-1.5 border-2 border-black bg-white hover:bg-black hover:text-white transition-colors"
                               >
-                                <Edit size={16} />
+                                <Edit size={12} className="sm:w-[13px] sm:h-[13px]" />
                               </button>
                               <button
                                 onClick={() => handleDelete(product._id)}
-                                className="p-2 border-2 border-black bg-white hover:bg-red-600 hover:text-white transition-colors"
+                                className="p-1 sm:p-1.5 border-2 border-black bg-white hover:bg-red-600 hover:text-white transition-colors"
                               >
-                                <Trash2 size={16} />
+                                <Trash2 size={12} className="sm:w-[13px] sm:h-[13px]" />
                               </button>
                             </div>
                           </div>
@@ -818,70 +818,70 @@ export function Admin() {
       
       {/* Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 border-t-4 border-black bg-white">
-        <div className="container mx-auto px-6 py-4">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex gap-2">
+        <div className="container mx-auto px-3 sm:px-6 py-2 sm:py-3">
+          <div className="flex items-center justify-between mb-1 sm:mb-1.5">
+            <div className="flex gap-1 sm:gap-1.5 flex-1 justify-center sm:justify-start">
               <button
                 onClick={() => setActiveNavButton('home')}
-                className={`p-3 border-2 border-black transition-all ${
+                className={`p-2 sm:p-2.5 border-2 border-black transition-all ${
                   activeNavButton === 'home'
-                    ? 'bg-black text-white shadow-[4px_4px_0px_0px_#30578e]'
+                    ? 'bg-black text-white shadow-[3px_3px_0px_0px_#30578e]'
                     : 'bg-white text-black hover:bg-neutral-100'
                 }`}
               >
-                <Home size={20} />
+                <Home size={14} className="sm:w-4 sm:h-4" />
               </button>
               <button
                 onClick={() => setActiveNavButton('ai')}
-                className={`p-3 border-2 border-black transition-all ${
+                className={`p-2 sm:p-2.5 border-2 border-black transition-all ${
                   activeNavButton === 'ai'
-                    ? 'bg-black text-white shadow-[4px_4px_0px_0px_#30578e]'
+                    ? 'bg-black text-white shadow-[3px_3px_0px_0px_#30578e]'
                     : 'bg-white text-black hover:bg-neutral-100'
                 }`}
               >
-                <Bot size={20} />
+                <Bot size={14} className="sm:w-4 sm:h-4" />
               </button>
               <button
                 onClick={() => setActiveNavButton('documents')}
-                className={`p-3 border-2 border-black transition-all ${
+                className={`p-2 sm:p-2.5 border-2 border-black transition-all ${
                   activeNavButton === 'documents'
-                    ? 'bg-black text-white shadow-[4px_4px_0px_0px_#30578e]'
+                    ? 'bg-black text-white shadow-[3px_3px_0px_0px_#30578e]'
                     : 'bg-white text-black hover:bg-neutral-100'
                 }`}
               >
-                <FileText size={20} />
+                <FileText size={14} className="sm:w-4 sm:h-4" />
               </button>
               <button
                 onClick={() => setActiveNavButton('settings')}
-                className={`p-3 border-2 border-black transition-all ${
+                className={`p-2 sm:p-2.5 border-2 border-black transition-all ${
                   activeNavButton === 'settings'
-                    ? 'bg-black text-white shadow-[4px_4px_0px_0px_#30578e]'
+                    ? 'bg-black text-white shadow-[3px_3px_0px_0px_#30578e]'
                     : 'bg-white text-black hover:bg-neutral-100'
                 }`}
               >
-                <Settings size={20} />
+                <Settings size={14} className="sm:w-4 sm:h-4" />
               </button>
               <button
                 onClick={() => setActiveNavButton('profile')}
-                className={`p-3 border-2 border-black transition-all ${
+                className={`p-2 sm:p-2.5 border-2 border-black transition-all ${
                   activeNavButton === 'profile'
-                    ? 'bg-black text-white shadow-[4px_4px_0px_0px_#30578e]'
+                    ? 'bg-black text-white shadow-[3px_3px_0px_0px_#30578e]'
                     : 'bg-white text-black hover:bg-neutral-100'
                 }`}
               >
-                <User size={20} />
+                <User size={14} className="sm:w-4 sm:h-4" />
               </button>
             </div>
           </div>
-          <div className="text-center font-mono text-xs text-neutral-500">
+          <div className="text-center font-mono text-[9px] sm:text-[10px] text-neutral-500">
             Your LeadsCruise AI is working 24x7!
           </div>
         </div>
       </nav>
       
-      {/* Chat Button */}
-      <button className="fixed bottom-24 right-6 z-40 p-4 border-4 border-black bg-[#30578e] text-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] hover:shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-1 transition-all">
-        <MessageSquare size={24} />
+      {/* Chat Button - Positioned so its bottom aligns with top of bottom nav */}
+      <button className="fixed bottom-[70px] sm:bottom-[86px] right-3 sm:right-6 z-40 p-2 sm:p-3 border-4 border-black bg-[#30578e] text-white shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 transition-all">
+        <MessageSquare size={16} className="sm:w-[19px] sm:h-[19px]" />
       </button>
       
       {/* Add/Edit Modal */}
@@ -898,101 +898,101 @@ export function Admin() {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white border-4 border-black shadow-[16px_16px_0px_0px_rgba(0,0,0,1)] max-w-2xl w-full p-8"
+              className="bg-white border-4 border-black shadow-[16px_16px_0px_0px_rgba(0,0,0,1)] max-w-2xl w-full mx-4 sm:mx-0 p-4 sm:p-6 md:p-8 max-h-[90vh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-black uppercase">
+              <div className="flex items-center justify-between mb-4 sm:mb-6">
+                <h2 className="text-lg sm:text-xl md:text-2xl font-black uppercase">
                   {editingItem ? 'Edit' : 'Add'} {activeSection === 'users' ? 'User' : activeSection === 'employees' ? 'Employee' : 'Product'}
                 </h2>
                 <button
                   onClick={() => setShowModal(false)}
-                  className="p-2 border-2 border-black hover:bg-black hover:text-white transition-colors"
+                  className="p-1.5 sm:p-2 border-2 border-black hover:bg-black hover:text-white transition-colors"
                 >
-                  <X size={20} />
+                  <X size={18} className="sm:w-5 sm:h-5" />
                 </button>
               </div>
               
               {error && (
-                <div className="mb-4 p-3 bg-red-50 border-2 border-red-500 text-red-700 font-mono text-sm">
+                <div className="mb-3 sm:mb-4 p-2 sm:p-3 bg-red-50 border-2 border-red-500 text-red-700 font-mono text-xs sm:text-sm">
                   {error}
                 </div>
               )}
               
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
                 {(activeSection === 'users' || activeSection === 'employees') ? (
                   <>
                     <div>
-                      <label className="block font-bold uppercase text-sm mb-2">Email</label>
+                      <label className="block font-bold uppercase text-xs sm:text-sm mb-1 sm:mb-2">Email</label>
                       <input
                         type="email"
                         value={formData.email || ''}
                         onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                         required
-                        className="w-full border-2 border-black p-3 font-mono focus:outline-none focus:bg-black focus:text-white transition-colors"
+                        className="w-full border-2 border-black p-2 sm:p-3 font-mono text-sm focus:outline-none focus:bg-black focus:text-white transition-colors"
                       />
                     </div>
                     <div>
-                      <label className="block font-bold uppercase text-sm mb-2">
-                        Password {editingItem && '(leave empty to keep existing)'}
+                      <label className="block font-bold uppercase text-xs sm:text-sm mb-1 sm:mb-2">
+                        Password {editingItem && <span className="text-[10px]">(leave empty to keep existing)</span>}
                       </label>
                       <input
                         type="password"
                         value={formData.password || ''}
                         onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                         required={!editingItem}
-                        className="w-full border-2 border-black p-3 font-mono focus:outline-none focus:bg-black focus:text-white transition-colors"
+                        className="w-full border-2 border-black p-2 sm:p-3 font-mono text-sm focus:outline-none focus:bg-black focus:text-white transition-colors"
                       />
                     </div>
                     <div>
-                      <label className="block font-bold uppercase text-sm mb-2">Role</label>
+                      <label className="block font-bold uppercase text-xs sm:text-sm mb-1 sm:mb-2">Role</label>
                       <input
                         type="text"
                         value={formData.role || ''}
                         disabled
-                        className="w-full border-2 border-black p-3 font-mono bg-neutral-100"
+                        className="w-full border-2 border-black p-2 sm:p-3 font-mono text-sm bg-neutral-100"
                       />
                     </div>
                   </>
                 ) : (
                   <>
                     <div>
-                      <label className="block font-bold uppercase text-sm mb-2">Product Name</label>
+                      <label className="block font-bold uppercase text-xs sm:text-sm mb-1 sm:mb-2">Product Name</label>
                       <input
                         type="text"
                         value={formData.name || ''}
                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                         required
-                        className="w-full border-2 border-black p-3 font-mono focus:outline-none focus:bg-black focus:text-white transition-colors"
+                        className="w-full border-2 border-black p-2 sm:p-3 font-mono text-sm focus:outline-none focus:bg-black focus:text-white transition-colors"
                       />
                     </div>
                     <div>
-                      <label className="block font-bold uppercase text-sm mb-2">Description</label>
+                      <label className="block font-bold uppercase text-xs sm:text-sm mb-1 sm:mb-2">Description</label>
                       <textarea
                         value={formData.description || ''}
                         onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                         required
                         rows={4}
-                        className="w-full border-2 border-black p-3 font-mono focus:outline-none focus:bg-black focus:text-white transition-colors resize-none"
+                        className="w-full border-2 border-black p-2 sm:p-3 font-mono text-sm focus:outline-none focus:bg-black focus:text-white transition-colors resize-none"
                       />
                     </div>
                     <div>
-                      <label className="block font-bold uppercase text-sm mb-2">Price</label>
+                      <label className="block font-bold uppercase text-xs sm:text-sm mb-1 sm:mb-2">Price</label>
                       <input
                         type="number"
                         step="0.01"
                         value={formData.price || ''}
                         onChange={(e) => setFormData({ ...formData, price: e.target.value })}
                         required
-                        className="w-full border-2 border-black p-3 font-mono focus:outline-none focus:bg-black focus:text-white transition-colors"
+                        className="w-full border-2 border-black p-2 sm:p-3 font-mono text-sm focus:outline-none focus:bg-black focus:text-white transition-colors"
                       />
                     </div>
                     <div>
-                      <label className="block font-bold uppercase text-sm mb-2">Category</label>
+                      <label className="block font-bold uppercase text-xs sm:text-sm mb-1 sm:mb-2">Category</label>
                       <select
                         value={formData.category || 'Couplings'}
                         onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                        className="w-full border-2 border-black p-3 font-mono focus:outline-none focus:bg-black focus:text-white transition-colors"
+                        className="w-full border-2 border-black p-2 sm:p-3 font-mono text-sm focus:outline-none focus:bg-black focus:text-white transition-colors"
                       >
                         <option>Couplings</option>
                         <option>Gear pump</option>
@@ -1002,17 +1002,17 @@ export function Admin() {
                   </>
                 )}
                 
-                <div className="flex gap-4 pt-4">
+                <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 pt-3 sm:pt-4">
                   <button
                     type="button"
                     onClick={() => setShowModal(false)}
-                    className="flex-1 px-6 py-3 border-2 border-black bg-white text-black hover:bg-neutral-100 transition-colors font-bold uppercase"
+                    className="flex-1 px-4 sm:px-6 py-2 sm:py-3 border-2 border-black bg-white text-black hover:bg-neutral-100 transition-colors font-bold uppercase text-xs sm:text-sm"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 px-6 py-3 border-2 border-black bg-black text-white hover:bg-white hover:text-black transition-colors font-bold uppercase"
+                    className="flex-1 px-4 sm:px-6 py-2 sm:py-3 border-2 border-black bg-black text-white hover:bg-white hover:text-black transition-colors font-bold uppercase text-xs sm:text-sm"
                   >
                     Save
                   </button>
@@ -1037,38 +1037,38 @@ export function Admin() {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white border-4 border-black shadow-[16px_16px_0px_0px_rgba(0,0,0,1)] max-w-2xl w-full p-8"
+              className="bg-white border-4 border-black shadow-[16px_16px_0px_0px_rgba(0,0,0,1)] max-w-2xl w-full mx-4 sm:mx-0 p-4 sm:p-6 md:p-8 max-h-[90vh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-black uppercase">Assign Lead</h2>
+              <div className="flex items-center justify-between mb-4 sm:mb-6">
+                <h2 className="text-lg sm:text-xl md:text-2xl font-black uppercase">Assign Lead</h2>
                 <button
                   onClick={() => setShowAssignModal(false)}
-                  className="p-2 border-2 border-black hover:bg-black hover:text-white transition-colors"
+                  className="p-1.5 sm:p-2 border-2 border-black hover:bg-black hover:text-white transition-colors"
                 >
-                  <X size={20} />
+                  <X size={18} className="sm:w-5 sm:h-5" />
                 </button>
               </div>
               
-              <div className="mb-6 p-4 border-2 border-black bg-neutral-50">
-                <div className="font-black text-lg mb-2">{selectedLead.productName}</div>
-                <div className="font-mono text-sm space-y-1">
+              <div className="mb-4 sm:mb-6 p-3 sm:p-4 border-2 border-black bg-neutral-50">
+                <div className="font-black text-base sm:text-lg mb-1 sm:mb-2 break-words">{selectedLead.productName}</div>
+                <div className="font-mono text-xs sm:text-sm space-y-1">
                   <div>Quantity: {selectedLead.quantity}</div>
-                  <div>Requester: {selectedLead.requesterEmail}</div>
+                  <div className="break-words">Requester: {selectedLead.requesterEmail}</div>
                 </div>
               </div>
               
               {error && (
-                <div className="mb-4 p-3 bg-red-50 border-2 border-red-500 text-red-700 font-mono text-sm">
+                <div className="mb-3 sm:mb-4 p-2 sm:p-3 bg-red-50 border-2 border-red-500 text-red-700 font-mono text-xs sm:text-sm">
                   {error}
                 </div>
               )}
               
-              <form onSubmit={handleAssignSubmit} className="space-y-4">
+              <form onSubmit={handleAssignSubmit} className="space-y-3 sm:space-y-4">
                 <div>
-                  <label className="block font-bold uppercase text-sm mb-2">Select Employee</label>
+                  <label className="block font-bold uppercase text-xs sm:text-sm mb-1 sm:mb-2">Select Employee</label>
                   {employees.length === 0 ? (
-                    <div className="p-4 border-2 border-black bg-neutral-100 font-mono text-sm">
+                    <div className="p-3 sm:p-4 border-2 border-black bg-neutral-100 font-mono text-xs sm:text-sm">
                       {employees.length === 0 ? 'Loading employees...' : 'No employees found'}
                     </div>
                   ) : (
@@ -1076,7 +1076,7 @@ export function Admin() {
                       value={assignFormData.employeeEmail}
                       onChange={(e) => setAssignFormData({ ...assignFormData, employeeEmail: e.target.value })}
                       required
-                      className="w-full border-2 border-black p-3 font-mono focus:outline-none focus:bg-black focus:text-white transition-colors"
+                      className="w-full border-2 border-black p-2 sm:p-3 font-mono text-sm focus:outline-none focus:bg-black focus:text-white transition-colors"
                     >
                       <option value="">Select an employee</option>
                       {employees.map((emp) => (
@@ -1089,26 +1089,26 @@ export function Admin() {
                 </div>
                 
                 <div>
-                  <label className="block font-bold uppercase text-sm mb-2">Additional Comment (Optional)</label>
+                  <label className="block font-bold uppercase text-xs sm:text-sm mb-1 sm:mb-2">Additional Comment (Optional)</label>
                   <textarea
                     value={assignFormData.comment}
                     onChange={(e) => setAssignFormData({ ...assignFormData, comment: e.target.value })}
                     rows={4}
-                    className="w-full border-2 border-black p-3 font-mono focus:outline-none focus:bg-black focus:text-white transition-colors resize-none"
+                    className="w-full border-2 border-black p-2 sm:p-3 font-mono text-sm focus:outline-none focus:bg-black focus:text-white transition-colors resize-none"
                   />
                 </div>
                 
-                <div className="flex gap-4 pt-4">
+                <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 pt-3 sm:pt-4">
                   <button
                     type="button"
                     onClick={() => setShowAssignModal(false)}
-                    className="flex-1 px-6 py-3 border-2 border-black bg-white text-black hover:bg-neutral-100 transition-colors font-bold uppercase"
+                    className="flex-1 px-4 sm:px-6 py-2 sm:py-3 border-2 border-black bg-white text-black hover:bg-neutral-100 transition-colors font-bold uppercase text-xs sm:text-sm"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 px-6 py-3 border-2 border-black bg-black text-white hover:bg-white hover:text-black transition-colors font-bold uppercase"
+                    className="flex-1 px-4 sm:px-6 py-2 sm:py-3 border-2 border-black bg-black text-white hover:bg-white hover:text-black transition-colors font-bold uppercase text-xs sm:text-sm"
                   >
                     Assign
                   </button>
@@ -1133,49 +1133,49 @@ export function Admin() {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white border-4 border-black shadow-[16px_16px_0px_0px_rgba(0,0,0,1)] max-w-3xl w-full max-h-[90vh] overflow-y-auto p-8"
+              className="bg-white border-4 border-black shadow-[16px_16px_0px_0px_rgba(0,0,0,1)] max-w-3xl w-full mx-4 sm:mx-0 max-h-[90vh] overflow-y-auto p-4 sm:p-6 md:p-8"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-black uppercase">Lead Details</h2>
+              <div className="flex items-center justify-between mb-4 sm:mb-6">
+                <h2 className="text-lg sm:text-xl md:text-2xl font-black uppercase">Lead Details</h2>
                 <button
                   onClick={() => setShowDetailsModal(false)}
-                  className="p-2 border-2 border-black hover:bg-black hover:text-white transition-colors"
+                  className="p-1.5 sm:p-2 border-2 border-black hover:bg-black hover:text-white transition-colors"
                 >
-                  <X size={20} />
+                  <X size={18} className="sm:w-5 sm:h-5" />
                 </button>
               </div>
               
-              <div className="space-y-4">
-                <div className="p-4 border-2 border-black">
-                  <div className="font-bold uppercase text-sm mb-2">Lead ID</div>
-                  <div className="font-mono text-xs">{selectedLead._id}</div>
+              <div className="space-y-3 sm:space-y-4">
+                <div className="p-3 sm:p-4 border-2 border-black">
+                  <div className="font-bold uppercase text-xs sm:text-sm mb-1 sm:mb-2">Lead ID</div>
+                  <div className="font-mono text-[10px] sm:text-xs break-all">{selectedLead._id}</div>
                 </div>
                 
-                <div className="p-4 border-2 border-black">
-                  <div className="font-bold uppercase text-sm mb-2">Product Name</div>
-                  <div className="font-black text-lg">{selectedLead.productName}</div>
+                <div className="p-3 sm:p-4 border-2 border-black">
+                  <div className="font-bold uppercase text-xs sm:text-sm mb-1 sm:mb-2">Product Name</div>
+                  <div className="font-black text-base sm:text-lg break-words">{selectedLead.productName}</div>
                 </div>
                 
-                <div className="p-4 border-2 border-black">
-                  <div className="font-bold uppercase text-sm mb-2">Quantity Requested</div>
-                  <div className="font-mono">{selectedLead.quantity}</div>
+                <div className="p-3 sm:p-4 border-2 border-black">
+                  <div className="font-bold uppercase text-xs sm:text-sm mb-1 sm:mb-2">Quantity Requested</div>
+                  <div className="font-mono text-sm sm:text-base">{selectedLead.quantity}</div>
                 </div>
                 
-                <div className="p-4 border-2 border-black">
-                  <div className="font-bold uppercase text-sm mb-2">Requester Email</div>
-                  <div className="font-mono">{selectedLead.requesterEmail}</div>
+                <div className="p-3 sm:p-4 border-2 border-black">
+                  <div className="font-bold uppercase text-xs sm:text-sm mb-1 sm:mb-2">Requester Email</div>
+                  <div className="font-mono text-sm sm:text-base break-words">{selectedLead.requesterEmail}</div>
                 </div>
                 
-                <div className="p-4 border-2 border-black">
-                  <div className="font-bold uppercase text-sm mb-2">Contact Number</div>
-                  <div className="font-mono">{formatPhone(selectedLead.contactNumber)}</div>
+                <div className="p-3 sm:p-4 border-2 border-black">
+                  <div className="font-bold uppercase text-xs sm:text-sm mb-1 sm:mb-2">Contact Number</div>
+                  <div className="font-mono text-sm sm:text-base">{formatPhone(selectedLead.contactNumber)}</div>
                 </div>
                 
-                <div className="p-4 border-2 border-black">
-                  <div className="font-bold uppercase text-sm mb-2">Status</div>
+                <div className="p-3 sm:p-4 border-2 border-black">
+                  <div className="font-bold uppercase text-xs sm:text-sm mb-1 sm:mb-2">Status</div>
                   <span
-                    className="inline-block px-3 py-1 text-xs font-bold uppercase"
+                    className="inline-block px-2 sm:px-3 py-0.5 sm:py-1 text-[10px] sm:text-xs font-bold uppercase"
                     style={{ 
                       backgroundColor: getStatusColor(selectedLead.status),
                       color: 'white'
@@ -1186,34 +1186,34 @@ export function Admin() {
                 </div>
                 
                 {selectedLead.assignedTo && (
-                  <div className="p-4 border-2 border-black">
-                    <div className="font-bold uppercase text-sm mb-2">Assigned To</div>
-                    <div className="font-mono">{selectedLead.assignedTo}</div>
+                  <div className="p-3 sm:p-4 border-2 border-black">
+                    <div className="font-bold uppercase text-xs sm:text-sm mb-1 sm:mb-2">Assigned To</div>
+                    <div className="font-mono text-sm sm:text-base break-words">{selectedLead.assignedTo}</div>
                   </div>
                 )}
                 
-                <div className="p-4 border-2 border-black">
-                  <div className="font-bold uppercase text-sm mb-2">Created At</div>
-                  <div className="font-mono text-sm">{formatDate(selectedLead.createdAt)}</div>
+                <div className="p-3 sm:p-4 border-2 border-black">
+                  <div className="font-bold uppercase text-xs sm:text-sm mb-1 sm:mb-2">Created At</div>
+                  <div className="font-mono text-xs sm:text-sm">{formatDate(selectedLead.createdAt)}</div>
                 </div>
                 
                 {selectedLead.updatedAt && (
-                  <div className="p-4 border-2 border-black">
-                    <div className="font-bold uppercase text-sm mb-2">Last Updated</div>
-                    <div className="font-mono text-sm">{formatDate(selectedLead.updatedAt)}</div>
+                  <div className="p-3 sm:p-4 border-2 border-black">
+                    <div className="font-bold uppercase text-xs sm:text-sm mb-1 sm:mb-2">Last Updated</div>
+                    <div className="font-mono text-xs sm:text-sm">{formatDate(selectedLead.updatedAt)}</div>
                   </div>
                 )}
                 
                 {selectedLead.quotation && (
-                  <div className="p-4 border-2 border-black">
-                    <div className="font-bold uppercase text-sm mb-2">Quotation Status</div>
+                  <div className="p-3 sm:p-4 border-2 border-black">
+                    <div className="font-bold uppercase text-xs sm:text-sm mb-1 sm:mb-2">Quotation Status</div>
                     <button
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
                         handleViewQuotation(selectedLead._id);
                       }}
-                      className="text-sm font-bold text-[#30578e] hover:underline cursor-pointer"
+                      className="text-xs sm:text-sm font-bold text-[#30578e] hover:underline cursor-pointer break-words"
                       type="button"
                     >
                       ✓ Quotation Generated - Click to View
@@ -1222,24 +1222,24 @@ export function Admin() {
                 )}
                 
                 {selectedLead.comments && selectedLead.comments.length > 0 && (
-                  <div className="p-4 border-2 border-black">
-                    <div className="font-bold uppercase text-sm mb-4">Comments</div>
-                    <div className="space-y-3">
+                  <div className="p-3 sm:p-4 border-2 border-black">
+                    <div className="font-bold uppercase text-xs sm:text-sm mb-3 sm:mb-4">Comments</div>
+                    <div className="space-y-2 sm:space-y-3">
                       {selectedLead.comments.map((comment, idx) => (
-                        <div key={idx} className="p-3 border-2 border-neutral-300 bg-neutral-50">
-                          <div className="flex items-center gap-2 mb-2">
-                            <span className={`px-2 py-1 text-xs font-bold uppercase ${
+                        <div key={idx} className="p-2 sm:p-3 border-2 border-neutral-300 bg-neutral-50">
+                          <div className="flex flex-wrap items-center gap-2 mb-1 sm:mb-2">
+                            <span className={`px-2 py-0.5 sm:py-1 text-[10px] sm:text-xs font-bold uppercase ${
                               comment.authorType === 'admin' 
                                 ? 'bg-[#30578e] text-white' 
                                 : 'bg-neutral-600 text-white'
                             }`}>
                               {comment.authorType === 'admin' ? 'Admin' : 'Employee'}
                             </span>
-                            <span className="font-mono text-xs text-neutral-500">
+                            <span className="font-mono text-[10px] sm:text-xs text-neutral-500">
                               {formatDate(comment.createdAt)}
                             </span>
                           </div>
-                          <div className="font-mono text-sm">{comment.comment}</div>
+                          <div className="font-mono text-xs sm:text-sm break-words">{comment.comment}</div>
                         </div>
                       ))}
                     </div>
