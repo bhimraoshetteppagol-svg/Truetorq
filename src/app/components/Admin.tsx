@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import axios from 'axios';
@@ -17,20 +17,42 @@ import {
   Eye, 
   UserPlus,
   X,
-  MessageSquare
+  MessageSquare,
 } from 'lucide-react';
 import { API_URL } from '../../config/api';
+import {
+  applyLeadFilters,
+  emptyLeadFilters,
+  hasActiveLeadFilters,
+  type LeadFilters,
+  type QuotationFor,
+} from '../../utils/leadFilters';
+import { exportLeadsToExcel } from '../../utils/leadExport';
+import {
+  applyAccountFilters,
+  applyProductFilters,
+  emptyAccountFilters,
+  emptyProductFilters,
+  hasActiveFilters,
+  type AccountFilters,
+  type ProductFilters,
+} from '../../utils/adminEntityFilters';
+import { exportAccountsToExcel, exportProductsToExcel } from '../../utils/adminEntityExport';
+import { AdminSectionToolbar } from './AdminSectionToolbar';
+import { LeadFilterPanel } from './LeadFilterPanel';
 
 interface User {
   _id: string;
   email: string;
   role: string;
+  name?: string;
 }
 
 interface Employee {
   _id: string;
   email: string;
   role: string;
+  name?: string;
 }
 
 interface Product {
@@ -55,11 +77,15 @@ interface Lead {
   requesterEmail: string;
   contactNumber: string;
   quantity: number;
+  quantityRequested?: number;
   status: 'pending' | 'assigned' | 'in-progress' | 'completed';
   assignedTo?: string;
+  assignedEmployee?: string;
+  quotationFor?: QuotationFor;
+  items?: { product: string; quantity: number }[];
   createdAt: string;
   updatedAt?: string;
-  quotation?: any;
+  quotation?: unknown;
   comments?: Comment[];
 }
 
@@ -93,6 +119,14 @@ export function Admin() {
   const [formData, setFormData] = useState<any>({});
   const [assignFormData, setAssignFormData] = useState({ employeeEmail: '', comment: '' });
   const [error, setError] = useState('');
+  const [showLeadFilters, setShowLeadFilters] = useState(false);
+  const [leadFilters, setLeadFilters] = useState<LeadFilters>(emptyLeadFilters);
+  const [showUserFilters, setShowUserFilters] = useState(false);
+  const [userFilters, setUserFilters] = useState<AccountFilters>(emptyAccountFilters);
+  const [showEmployeeFilters, setShowEmployeeFilters] = useState(false);
+  const [employeeFilters, setEmployeeFilters] = useState<AccountFilters>(emptyAccountFilters);
+  const [showProductFilters, setShowProductFilters] = useState(false);
+  const [productFilters, setProductFilters] = useState<ProductFilters>(emptyProductFilters);
   
   // Authentication Check
   useEffect(() => {
@@ -470,14 +504,72 @@ export function Admin() {
     navigate('/login');
   };
   
-  // Statistics
-  const leadStats = {
-    total: leads.length,
-    pending: leads.filter(l => l.status === 'pending').length,
-    assigned: leads.filter(l => l.status === 'assigned').length,
-    completed: leads.filter(l => l.status === 'completed').length
+  const filteredLeads = useMemo(
+    () => applyLeadFilters(leads, leadFilters) as Lead[],
+    [leads, leadFilters]
+  );
+
+  const filtersActive = hasActiveLeadFilters(leadFilters);
+
+  const leadStats = useMemo(
+    () => ({
+      total: filteredLeads.length,
+      pending: filteredLeads.filter((l) => l.status === 'pending').length,
+      assigned: filteredLeads.filter((l) => l.status === 'assigned').length,
+      completed: filteredLeads.filter((l) => l.status === 'completed').length,
+    }),
+    [filteredLeads]
+  );
+
+  const updateLeadFilter = (key: keyof LeadFilters, value: string) => {
+    setLeadFilters((prev) => ({ ...prev, [key]: value }));
   };
-  
+
+  const clearLeadFilters = () => setLeadFilters(emptyLeadFilters());
+
+  const handleDownloadLeads = () => {
+    if (filteredLeads.length === 0) return;
+    exportLeadsToExcel(filteredLeads);
+  };
+
+  const filteredUsers = useMemo(
+    () => applyAccountFilters(users, userFilters) as User[],
+    [users, userFilters]
+  );
+  const userFiltersActive = hasActiveFilters(userFilters);
+
+  const filteredEmployees = useMemo(
+    () => applyAccountFilters(employees, employeeFilters) as Employee[],
+    [employees, employeeFilters]
+  );
+  const employeeFiltersActive = hasActiveFilters(employeeFilters);
+
+  const filteredProducts = useMemo(
+    () => applyProductFilters(products, productFilters) as Product[],
+    [products, productFilters]
+  );
+  const productFiltersActive = hasActiveFilters(productFilters);
+
+  const productCategories = useMemo(() => {
+    const categories = products
+      .map((p) => p.category?.trim())
+      .filter((c): c is string => Boolean(c));
+    return [...new Set(categories)].sort((a, b) => a.localeCompare(b));
+  }, [products]);
+
+  const updateUserFilter = (key: keyof AccountFilters, value: string) => {
+    setUserFilters((prev) => ({ ...prev, [key]: value }));
+  };
+  const updateEmployeeFilter = (key: keyof AccountFilters, value: string) => {
+    setEmployeeFilters((prev) => ({ ...prev, [key]: value }));
+  };
+  const updateProductFilter = (key: keyof ProductFilters, value: string) => {
+    setProductFilters((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const filterInputClass =
+    'w-full border-2 border-black px-2 py-1.5 font-mono text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#30578e]';
+
   if (loading) {
     return (
       <div className="min-h-screen bg-white text-black font-sans flex items-center justify-center">
@@ -565,18 +657,51 @@ export function Admin() {
                   <div>
                     <h2 className="text-xl sm:text-2xl font-black uppercase mb-1 sm:mb-1.5">Lead Management</h2>
                     <div className="font-mono text-[10px] sm:text-xs whitespace-nowrap overflow-x-auto">
+                      {filtersActive && leads.length > 0
+                        ? `Showing ${filteredLeads.length} of ${leads.length} | `
+                        : ''}
                       Total: {leadStats.total} | Pending: {leadStats.pending} | Assigned: {leadStats.assigned} | Completed: {leadStats.completed}
                     </div>
                   </div>
+                  <AdminSectionToolbar
+                    showFilters={showLeadFilters}
+                    onToggleFilters={() => setShowLeadFilters((v) => !v)}
+                    filtersActive={filtersActive}
+                    onDownload={handleDownloadLeads}
+                    downloadDisabled={filteredLeads.length === 0}
+                    filterTitle="Filter leads"
+                  />
                 </div>
+
+                <AnimatePresence>
+                  {showLeadFilters && (
+                    <LeadFilterPanel
+                      leadFilters={leadFilters}
+                      filtersActive={filtersActive}
+                      onUpdate={updateLeadFilter}
+                      onClear={clearLeadFilters}
+                    />
+                  )}
+                </AnimatePresence>
                 
                 {leads.length === 0 ? (
                   <div className="text-center py-8 sm:py-10 border-4 border-black">
                     <p className="font-mono text-sm sm:text-base">No leads found</p>
                   </div>
+                ) : filteredLeads.length === 0 ? (
+                  <div className="text-center py-8 sm:py-10 border-4 border-black">
+                    <p className="font-mono text-sm sm:text-base mb-2">No leads match your filters</p>
+                    <button
+                      type="button"
+                      onClick={clearLeadFilters}
+                      className="px-4 py-2 border-2 border-black font-bold uppercase text-xs hover:bg-black hover:text-white transition-colors"
+                    >
+                      Clear filters
+                    </button>
+                  </div>
                 ) : (
                   <div className="space-y-2 sm:space-y-3">
-                    {leads.map((lead) => (
+                    {filteredLeads.map((lead) => (
                       <div key={lead._id} className="border-4 border-black p-3 sm:p-5 bg-white shadow-[6px_6px_0px_0px_#30578e]">
                         <div className="flex flex-col md:flex-row justify-between gap-2 sm:gap-3">
                           <div className="flex-1 min-w-0">
@@ -655,23 +780,112 @@ export function Admin() {
             {activeSection === 'users' && (
               <div>
                 <div className="mb-4 sm:mb-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                  <h2 className="text-xl sm:text-2xl font-black uppercase">User Management</h2>
-                  <button
-                    onClick={handleAdd}
-                    className="px-3 sm:px-5 py-1.5 sm:py-2.5 border-2 border-black bg-black text-white hover:bg-white hover:text-black transition-colors font-bold uppercase text-[10px] sm:text-xs flex items-center gap-1 sm:gap-1.5 w-full sm:w-auto justify-center"
-                  >
-                    <Plus size={12} className="sm:w-[13px] sm:h-[13px]" />
-                    Add User
-                  </button>
+                  <div>
+                    <h2 className="text-xl sm:text-2xl font-black uppercase mb-1 sm:mb-1.5">User Management</h2>
+                    <div className="font-mono text-[10px] sm:text-xs">
+                      {userFiltersActive && users.length > 0
+                        ? `Showing ${filteredUsers.length} of ${users.length} | `
+                        : ''}
+                      Total: {filteredUsers.length}
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 justify-end">
+                    <AdminSectionToolbar
+                      showFilters={showUserFilters}
+                      onToggleFilters={() => setShowUserFilters((v) => !v)}
+                      filtersActive={userFiltersActive}
+                      onDownload={() => filteredUsers.length && exportAccountsToExcel(filteredUsers, 'users')}
+                      downloadDisabled={filteredUsers.length === 0}
+                      filterTitle="Filter users"
+                    />
+                    <button
+                      onClick={handleAdd}
+                      className="px-3 sm:px-5 py-1.5 sm:py-2.5 border-2 border-black bg-black text-white hover:bg-white hover:text-black transition-colors font-bold uppercase text-[10px] sm:text-xs flex items-center gap-1 sm:gap-1.5"
+                    >
+                      <Plus size={12} className="sm:w-[13px] sm:h-[13px]" />
+                      Add User
+                    </button>
+                  </div>
                 </div>
+
+                <AnimatePresence>
+                  {showUserFilters && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      className="mb-4 sm:mb-5 overflow-hidden"
+                    >
+                      <div className="border-4 border-black p-3 sm:p-4 bg-neutral-50 shadow-[4px_4px_0px_0px_#30578e]">
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="font-black uppercase text-xs sm:text-sm">Filter Users</span>
+                          {userFiltersActive && (
+                            <button
+                              type="button"
+                              onClick={() => setUserFilters(emptyAccountFilters())}
+                              className="text-[10px] sm:text-xs font-bold uppercase underline hover:text-[#30578e]"
+                            >
+                              Clear all
+                            </button>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
+                          <label className="sm:col-span-2 lg:col-span-3">
+                            <span className="block font-bold uppercase text-[10px] mb-1">Search all fields</span>
+                            <input
+                              type="text"
+                              value={userFilters.search}
+                              onChange={(e) => updateUserFilter('search', e.target.value)}
+                              placeholder="ID, email, name, role..."
+                              className={filterInputClass}
+                            />
+                          </label>
+                          <label>
+                            <span className="block font-bold uppercase text-[10px] mb-1">Email</span>
+                            <input
+                              type="text"
+                              value={userFilters.email}
+                              onChange={(e) => updateUserFilter('email', e.target.value)}
+                              className={filterInputClass}
+                            />
+                          </label>
+                          <label>
+                            <span className="block font-bold uppercase text-[10px] mb-1">Role</span>
+                            <select
+                              value={userFilters.role}
+                              onChange={(e) => updateUserFilter('role', e.target.value)}
+                              className={filterInputClass}
+                            >
+                              <option value="">All</option>
+                              <option value="user">User</option>
+                              <option value="admin">Admin</option>
+                              <option value="employee">Employee</option>
+                            </select>
+                          </label>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
                 
                 {users.length === 0 ? (
                   <div className="text-center py-8 sm:py-10 border-4 border-black">
                     <p className="font-mono text-sm sm:text-base">No users found</p>
                   </div>
+                ) : filteredUsers.length === 0 ? (
+                  <div className="text-center py-8 sm:py-10 border-4 border-black">
+                    <p className="font-mono text-sm sm:text-base mb-2">No users match your filters</p>
+                    <button
+                      type="button"
+                      onClick={() => setUserFilters(emptyAccountFilters())}
+                      className="px-4 py-2 border-2 border-black font-bold uppercase text-xs hover:bg-black hover:text-white transition-colors"
+                    >
+                      Clear filters
+                    </button>
+                  </div>
                 ) : (
                   <div className="space-y-2 sm:space-y-3">
-                    {users.map((userItem) => (
+                    {filteredUsers.map((userItem) => (
                       <div key={userItem._id} className="border-4 border-black p-3 sm:p-5 bg-white flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
                         <div className="flex-1 min-w-0">
                           <div className="font-black text-sm sm:text-base break-words">{userItem.email}</div>
@@ -701,23 +915,111 @@ export function Admin() {
             {activeSection === 'employees' && (
               <div>
                 <div className="mb-4 sm:mb-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                  <h2 className="text-xl sm:text-2xl font-black uppercase">Employee Management</h2>
-                  <button
-                    onClick={handleAdd}
-                    className="px-3 sm:px-5 py-1.5 sm:py-2.5 border-2 border-black bg-black text-white hover:bg-white hover:text-black transition-colors font-bold uppercase text-[10px] sm:text-xs flex items-center gap-1 sm:gap-1.5 w-full sm:w-auto justify-center"
-                  >
-                    <Plus size={12} className="sm:w-[13px] sm:h-[13px]" />
-                    Add Employee
-                  </button>
+                  <div>
+                    <h2 className="text-xl sm:text-2xl font-black uppercase mb-1 sm:mb-1.5">Employee Management</h2>
+                    <div className="font-mono text-[10px] sm:text-xs">
+                      {employeeFiltersActive && employees.length > 0
+                        ? `Showing ${filteredEmployees.length} of ${employees.length} | `
+                        : ''}
+                      Total: {filteredEmployees.length}
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 justify-end">
+                    <AdminSectionToolbar
+                      showFilters={showEmployeeFilters}
+                      onToggleFilters={() => setShowEmployeeFilters((v) => !v)}
+                      filtersActive={employeeFiltersActive}
+                      onDownload={() => filteredEmployees.length && exportAccountsToExcel(filteredEmployees, 'employees')}
+                      downloadDisabled={filteredEmployees.length === 0}
+                      filterTitle="Filter employees"
+                    />
+                    <button
+                      onClick={handleAdd}
+                      className="px-3 sm:px-5 py-1.5 sm:py-2.5 border-2 border-black bg-black text-white hover:bg-white hover:text-black transition-colors font-bold uppercase text-[10px] sm:text-xs flex items-center gap-1 sm:gap-1.5"
+                    >
+                      <Plus size={12} className="sm:w-[13px] sm:h-[13px]" />
+                      Add Employee
+                    </button>
+                  </div>
                 </div>
+
+                <AnimatePresence>
+                  {showEmployeeFilters && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      className="mb-4 sm:mb-5 overflow-hidden"
+                    >
+                      <div className="border-4 border-black p-3 sm:p-4 bg-neutral-50 shadow-[4px_4px_0px_0px_#30578e]">
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="font-black uppercase text-xs sm:text-sm">Filter Employees</span>
+                          {employeeFiltersActive && (
+                            <button
+                              type="button"
+                              onClick={() => setEmployeeFilters(emptyAccountFilters())}
+                              className="text-[10px] sm:text-xs font-bold uppercase underline hover:text-[#30578e]"
+                            >
+                              Clear all
+                            </button>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
+                          <label className="sm:col-span-2 lg:col-span-3">
+                            <span className="block font-bold uppercase text-[10px] mb-1">Search all fields</span>
+                            <input
+                              type="text"
+                              value={employeeFilters.search}
+                              onChange={(e) => updateEmployeeFilter('search', e.target.value)}
+                              placeholder="ID, email, name, role..."
+                              className={filterInputClass}
+                            />
+                          </label>
+                          <label>
+                            <span className="block font-bold uppercase text-[10px] mb-1">Email</span>
+                            <input
+                              type="text"
+                              value={employeeFilters.email}
+                              onChange={(e) => updateEmployeeFilter('email', e.target.value)}
+                              className={filterInputClass}
+                            />
+                          </label>
+                          <label>
+                            <span className="block font-bold uppercase text-[10px] mb-1">Role</span>
+                            <select
+                              value={employeeFilters.role}
+                              onChange={(e) => updateEmployeeFilter('role', e.target.value)}
+                              className={filterInputClass}
+                            >
+                              <option value="">All</option>
+                              <option value="employee">Employee</option>
+                              <option value="admin">Admin</option>
+                            </select>
+                          </label>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
                 
                 {employees.length === 0 ? (
                   <div className="text-center py-8 sm:py-10 border-4 border-black">
                     <p className="font-mono text-sm sm:text-base">No employees found</p>
                   </div>
+                ) : filteredEmployees.length === 0 ? (
+                  <div className="text-center py-8 sm:py-10 border-4 border-black">
+                    <p className="font-mono text-sm sm:text-base mb-2">No employees match your filters</p>
+                    <button
+                      type="button"
+                      onClick={() => setEmployeeFilters(emptyAccountFilters())}
+                      className="px-4 py-2 border-2 border-black font-bold uppercase text-xs hover:bg-black hover:text-white transition-colors"
+                    >
+                      Clear filters
+                    </button>
+                  </div>
                 ) : (
                   <div className="space-y-2 sm:space-y-3">
-                    {employees.map((employee) => (
+                    {filteredEmployees.map((employee) => (
                       <div key={employee._id} className="border-4 border-black p-3 sm:p-5 bg-white flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
                         <div className="flex-1 min-w-0">
                           <div className="font-black text-sm sm:text-base break-words">{employee.email}</div>
@@ -747,23 +1049,134 @@ export function Admin() {
             {activeSection === 'products' && (
               <div>
                 <div className="mb-4 sm:mb-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                  <h2 className="text-xl sm:text-2xl font-black uppercase">Product Management</h2>
-                  <button
-                    onClick={handleAdd}
-                    className="px-3 sm:px-5 py-1.5 sm:py-2.5 border-2 border-black bg-black text-white hover:bg-white hover:text-black transition-colors font-bold uppercase text-[10px] sm:text-xs flex items-center gap-1 sm:gap-1.5 w-full sm:w-auto justify-center"
-                  >
-                    <Plus size={12} className="sm:w-[13px] sm:h-[13px]" />
-                    Add Product
-                  </button>
+                  <div>
+                    <h2 className="text-xl sm:text-2xl font-black uppercase mb-1 sm:mb-1.5">Product Management</h2>
+                    <div className="font-mono text-[10px] sm:text-xs">
+                      {productFiltersActive && products.length > 0
+                        ? `Showing ${filteredProducts.length} of ${products.length} | `
+                        : ''}
+                      Total: {filteredProducts.length}
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 justify-end">
+                    <AdminSectionToolbar
+                      showFilters={showProductFilters}
+                      onToggleFilters={() => setShowProductFilters((v) => !v)}
+                      filtersActive={productFiltersActive}
+                      onDownload={() => filteredProducts.length && exportProductsToExcel(filteredProducts)}
+                      downloadDisabled={filteredProducts.length === 0}
+                      filterTitle="Filter products"
+                    />
+                    <button
+                      onClick={handleAdd}
+                      className="px-3 sm:px-5 py-1.5 sm:py-2.5 border-2 border-black bg-black text-white hover:bg-white hover:text-black transition-colors font-bold uppercase text-[10px] sm:text-xs flex items-center gap-1 sm:gap-1.5"
+                    >
+                      <Plus size={12} className="sm:w-[13px] sm:h-[13px]" />
+                      Add Product
+                    </button>
+                  </div>
                 </div>
+
+                <AnimatePresence>
+                  {showProductFilters && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      className="mb-4 sm:mb-5 overflow-hidden"
+                    >
+                      <div className="border-4 border-black p-3 sm:p-4 bg-neutral-50 shadow-[4px_4px_0px_0px_#30578e]">
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="font-black uppercase text-xs sm:text-sm">Filter Products</span>
+                          {productFiltersActive && (
+                            <button
+                              type="button"
+                              onClick={() => setProductFilters(emptyProductFilters())}
+                              className="text-[10px] sm:text-xs font-bold uppercase underline hover:text-[#30578e]"
+                            >
+                              Clear all
+                            </button>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
+                          <label className="sm:col-span-2 lg:col-span-3">
+                            <span className="block font-bold uppercase text-[10px] mb-1">Search all fields</span>
+                            <input
+                              type="text"
+                              value={productFilters.search}
+                              onChange={(e) => updateProductFilter('search', e.target.value)}
+                              placeholder="ID, name, category..."
+                              className={filterInputClass}
+                            />
+                          </label>
+                          <label>
+                            <span className="block font-bold uppercase text-[10px] mb-1">Product name</span>
+                            <input
+                              type="text"
+                              value={productFilters.name}
+                              onChange={(e) => updateProductFilter('name', e.target.value)}
+                              className={filterInputClass}
+                            />
+                          </label>
+                          <label>
+                            <span className="block font-bold uppercase text-[10px] mb-1">Category</span>
+                            <select
+                              value={productFilters.category}
+                              onChange={(e) => updateProductFilter('category', e.target.value)}
+                              className={filterInputClass}
+                            >
+                              <option value="">All categories</option>
+                              {productCategories.map((category) => (
+                                <option key={category} value={category}>
+                                  {category}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                          <label>
+                            <span className="block font-bold uppercase text-[10px] mb-1">Price min</span>
+                            <input
+                              type="number"
+                              min={0}
+                              value={productFilters.priceMin}
+                              onChange={(e) => updateProductFilter('priceMin', e.target.value)}
+                              className={filterInputClass}
+                            />
+                          </label>
+                          <label>
+                            <span className="block font-bold uppercase text-[10px] mb-1">Price max</span>
+                            <input
+                              type="number"
+                              min={0}
+                              value={productFilters.priceMax}
+                              onChange={(e) => updateProductFilter('priceMax', e.target.value)}
+                              className={filterInputClass}
+                            />
+                          </label>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
                 
                 {products.length === 0 ? (
                   <div className="text-center py-8 sm:py-10 border-4 border-black">
                     <p className="font-mono text-sm sm:text-base">No products found</p>
                   </div>
+                ) : filteredProducts.length === 0 ? (
+                  <div className="text-center py-8 sm:py-10 border-4 border-black">
+                    <p className="font-mono text-sm sm:text-base mb-2">No products match your filters</p>
+                    <button
+                      type="button"
+                      onClick={() => setProductFilters(emptyProductFilters())}
+                      className="px-4 py-2 border-2 border-black font-bold uppercase text-xs hover:bg-black hover:text-white transition-colors"
+                    >
+                      Clear filters
+                    </button>
+                  </div>
                 ) : (
                   <div className="space-y-2 sm:space-y-3">
-                    {products.map((product) => {
+                    {filteredProducts.map((product) => {
                       const productName = product.productName || product.name || 'N/A';
                       const productDescription = product.productDescription || product.description || 'No description available';
                       const price = product.price || 0;

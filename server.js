@@ -14,110 +14,55 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// MongoDB Connection - Connect without database first to find the right one
-const MONGODB_BASE_URI = 'mongodb+srv://admin:admin@evolutionapi.ipbubyl.mongodb.net/?appName=EvolutionAPI';
+// MongoDB — TrueTorq cluster, protorq database only
+const DB_NAME = process.env.MONGODB_DB_NAME || 'protorq';
 
-mongoose.connect(MONGODB_BASE_URI, {
-  serverSelectionTimeoutMS: 10000,
-}).then(async () => {
+const buildMongoUri = () => {
+  const base = process.env.MONGODB_URI || 'mongodb+srv://user:user@truetorq.qitevte.mongodb.net/?appName=TrueTorq';
+  if (/mongodb(\+srv)?:\/\/[^/]+\/[^/?]+/.test(base)) {
+    return base;
+  }
+  const qIndex = base.indexOf('?');
+  if (qIndex === -1) {
+    const slash = base.endsWith('/') ? '' : '/';
+    return `${base}${slash}${DB_NAME}`;
+  }
+  const path = base.slice(0, qIndex);
+  const query = base.slice(qIndex + 1);
+  const slash = path.endsWith('/') ? '' : '/';
+  return `${path}${slash}${DB_NAME}?${query}`;
+};
+
+const MONGO_OPTIONS = {
+  serverSelectionTimeoutMS: 30000,
+  bufferCommands: false,
+};
+
+const isDbConnected = () => mongoose.connection.readyState === 1;
+
+const connectMongo = async () => {
+  await mongoose.connect(buildMongoUri(), MONGO_OPTIONS);
   console.log('✅ Successfully connected to MongoDB');
-  
-  // List all databases
-  const adminDb = mongoose.connection.db.admin();
-  const dbs = await adminDb.listDatabases();
-  console.log('📁 Available databases:', dbs.databases.map(db => db.name));
-  
-  // Find database with users collection containing admin@example.com
-  let targetDb = null;
-  let targetDbName = null;
-  
-  for (const dbInfo of dbs.databases) {
-    const db = mongoose.connection.useDb(dbInfo.name);
-    const collections = await db.listCollections().toArray();
-    const hasUsersCollection = collections.find(c => c.name === 'users');
-    
-    if (hasUsersCollection) {
-      const userCount = await db.collection('users').countDocuments();
-      if (userCount > 0) {
-        const user = await db.collection('users').findOne({ email: 'admin@example.com' });
-        if (user) {
-          targetDb = db;
-          targetDbName = dbInfo.name;
-          console.log(`✅ Found user in database: ${dbInfo.name}`);
-          break;
-        }
-      }
-    }
-  }
-  
-  // If not found, try common database names
-  if (!targetDb) {
-    const possibleNames = ['protorq', 'Protorq', 'protoq', 'Protoq', 'ProtorQ'];
-    for (const dbName of possibleNames) {
-      try {
-        const db = mongoose.connection.useDb(dbName);
-        const user = await db.collection('users').findOne({ email: 'admin@example.com' });
-        if (user) {
-          targetDb = db;
-          targetDbName = dbName;
-          console.log(`✅ Found user in database: ${dbName}`);
-          break;
-        }
-      } catch (e) {
-        // Database doesn't exist, continue
-      }
-    }
-  }
-  
-  // Default to protorq if not found
-  if (!targetDb) {
-    targetDbName = 'protorq';
-    targetDb = mongoose.connection.useDb(targetDbName);
-    console.log(`📁 Using default database: ${targetDbName}`);
-  } else {
-    mongoose.connection.useDb(targetDbName);
-    console.log(`📁 Using database: ${targetDbName}`);
-  }
-  
-  // Check users and leads collections
+  console.log(`📁 Database: ${mongoose.connection.name || DB_NAME}`);
+
   const db = mongoose.connection.db;
   const collections = await db.listCollections().toArray();
-  console.log('📋 Available collections:', collections.map(c => c.name));
-  
-  if (collections.find(c => c.name === 'users')) {
-    const userCount = await db.collection('users').countDocuments();
-    console.log('👥 Users collection document count:', userCount);
-    
-    if (userCount > 0) {
-      const sampleUsers = await db.collection('users').find({}).limit(3).toArray();
-      console.log('📝 Sample user emails:', sampleUsers.map(u => u.email));
-    }
-  }
-  
-  // Check leads collection
-  if (collections.find(c => c.name === 'leads')) {
-    const leadCount = await db.collection('leads').countDocuments();
-    console.log('📊 Leads collection document count:', leadCount);
-    
-    if (leadCount > 0) {
-      const sampleLeads = await db.collection('leads').find({}).limit(3).toArray();
-      console.log('📝 Sample leads:', sampleLeads.map(l => ({ 
-        id: l._id, 
-        product: l.productName, 
-        email: l.requesterEmail,
-        status: l.status 
-      })));
-    }
-  } else {
-    console.log('⚠️  Leads collection is empty or does not exist');
-  }
-}).catch((error) => {
-  console.error('❌ Error connecting to MongoDB:', error);
-});
+  console.log('📋 Collections:', collections.map((c) => c.name));
 
-// Schemas - User schema for existing users collection
-// Note: We'll use the database selected in the connection
+  if (collections.find((c) => c.name === 'users')) {
+    const userCount = await db.collection('users').countDocuments();
+    console.log('👥 Users:', userCount);
+  }
+
+  if (collections.find((c) => c.name === 'leads')) {
+    const leadCount = await db.collection('leads').countDocuments();
+    console.log('📊 Leads:', leadCount);
+  }
+};
+
+// Schemas — all collections live in the protorq database
 const UserSchema = new mongoose.Schema({
+  name: { type: String },
   email: { type: String, required: true },
   password: { type: String, required: true },
   role: { type: String, enum: ['admin', 'employee', 'user'] }
@@ -131,6 +76,14 @@ const LeadSchema = new mongoose.Schema({
   productName: { type: String, required: true },
   requesterEmail: { type: String, required: true },
   contactNumber: { type: String },
+  quotationFor: {
+    company: { type: String },
+    name: { type: String },
+    location: { type: String },
+    kindAttn: { type: String },
+    phone: { type: String },
+    reference: { type: String },
+  },
   quantity: { type: Number, default: 1 },
   quantityRequested: { type: Number },
   status: { type: String, enum: ['pending', 'assigned', 'in-progress', 'completed'], default: 'pending' },
@@ -165,88 +118,291 @@ const QuotationSchema = new mongoose.Schema({
   verify: mongoose.Schema.Types.Mixed,
   currency: { type: String },
   pdf: { type: Buffer }
-}, { timestamps: true });
+}, { timestamps: true, collection: 'quotations' });
 
-// Create User model - will use the database from the connection
-const User = mongoose.model('User', UserSchema);
+const getUserModel = () =>
+  mongoose.models.User || mongoose.model('User', UserSchema, 'users');
+const getLeadModel = () =>
+  mongoose.models.Lead || mongoose.model('Lead', LeadSchema, 'leads');
+const getProductModel = () =>
+  mongoose.models.Product || mongoose.model('Product', ProductSchema, 'products');
+const getQuotationModel = () =>
+  mongoose.models.Quotation || mongoose.model('Quotation', QuotationSchema, 'quotations');
 
-// Helper function to find user across databases
-const findUserInDatabase = async (email, dbName = null) => {
-  // Try common database names in order of preference
-  const possibleDbs = dbName ? [dbName] : ['protorq', 'Protorq', 'protoq', 'Protoq', 'test'];
-  
-  for (const db of possibleDbs) {
-    try {
-      const dbConnection = mongoose.connection.useDb(db);
-      const UserModel = dbConnection.model('User', UserSchema, 'users');
-      
-      // Try exact match
-      let user = await UserModel.findOne({ email: email });
-      if (user) {
-        // Switch to this database for future queries
-        mongoose.connection.useDb(db);
-        return user;
+const requireDb = (req, res, next) => {
+  if (isDbConnected()) return next();
+  return res.status(503).json({
+    message:
+      'Database is not connected. Check MongoDB Atlas network access (IP whitelist) and that the cluster is reachable.',
+  });
+};
+
+const findUserInDatabase = async (email) => {
+  const UserModel = getUserModel();
+  const escaped = email.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+  let user = await UserModel.findOne({ email });
+  if (user) return user;
+
+  user = await UserModel.findOne({ email: new RegExp(`^${escaped}$`, 'i') });
+  if (user) return user;
+
+  return UserModel.findOne({ email: email.toLowerCase() });
+};
+
+const resolveLead = async (leadId) => getLeadModel().findById(leadId);
+
+const buildQuotationPdfBuffer = ({ lead, products = [], terms = {}, verify = {}, currency = '₹' }) =>
+  new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ size: 'A4', margin: 40 });
+    const chunks = [];
+
+    doc.on('data', (chunk) => chunks.push(chunk));
+    doc.on('end', () => resolve(Buffer.concat(chunks)));
+    doc.on('error', reject);
+
+    const now = new Date();
+    const quotationNo = verify?.quotationNo || `TT${String(lead._id).slice(-8).toUpperCase()}`;
+    const formattedDate = now.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+    const validDays = Number(terms?.validityDays || 30);
+    const validUntil = `${validDays} Days`;
+
+    const companyName = verify?.companyName || verify?.customerCompany || 'LULU INDIA SHOPPING MALL PVT LTD';
+    const customerName = verify?.customerName || verify?.contactPerson || companyName;
+    const location = verify?.location || [verify?.addressLine1, verify?.addressLine2].filter(Boolean).join(', ') || '-';
+    const kindAttn = verify?.kindAttn || companyName;
+    const refValue = verify?.reference || String(lead._id).slice(-10).toUpperCase();
+    const preparedBy = verify?.preparedBy || verify?.primaryEmail || 'sales@truetorq.com';
+    const contactNo = verify?.pnsPhone || verify?.primaryPhone || verify?.alternatePhone || lead.contactNumber || '-';
+    const emailId = verify?.primaryEmail || lead.requesterEmail || '-';
+
+    const companyAddressLines = [
+      'NO C-53, 6TH CROSS',
+      'KSSIDC INDUSTRIAL AREA, GAMANAGATTI',
+      'Hubballi, Karnataka, India 580025',
+      '+91-9028368529 | info@truetorq.com',
+      'Website: www.truetorq.com',
+      'GSTN: 29AAMCT1766D1Z2',
+    ];
+
+    const lineItems = Array.isArray(products) && products.length > 0 ? products : [{
+      productName: lead.productName || 'TT Coupling',
+      description: '',
+      quantity: lead.quantityRequested || lead.quantity || 1,
+      price: 0,
+      unit: 'Nos',
+      hsn: verify?.defaultHsn || '84836010',
+    }];
+
+    const normalizedItems = lineItems.map((item) => {
+      const qty = Number(item.quantity || 1);
+      const rawPrice = Number(item.price || 0);
+      const discountPct = Number(item.discount || terms?.discount || 0);
+      const unitPrice = Number.isFinite(rawPrice) ? rawPrice : 0;
+      const finalPrice = unitPrice - (unitPrice * discountPct / 100);
+      return {
+        productName: item.productName || item.name || item.product || 'TT Coupling',
+        description: item.description || '-',
+        qty,
+        hsn: String(item.hsn || item.hsnCode || verify?.defaultHsn || '84836010'),
+        unitPrice,
+        discountPct,
+        finalPrice,
+        amount: finalPrice * qty,
+        make: item.make || 'TrueTorq',
+        design: item.design || '2.0',
+        model: item.model || '-',
+      };
+    });
+
+    const subTotal = normalizedItems.reduce((acc, item) => acc + item.amount, 0);
+    const orderDiscountPct = Number(terms?.discount || 0);
+    const orderDiscountAmount = orderDiscountPct > 0 ? (subTotal * orderDiscountPct) / 100 : 0;
+    const discountedTotal = subTotal - orderDiscountAmount;
+    const freightAmount = Number(terms?.shippingCharges || 0);
+    const effectiveFreight = terms?.shippingIncluded ? 0 : freightAmount;
+    const gstPercent = Number(terms?.applicableTaxes || terms?.gstPercent || terms?.applicableTaxesPercent || 18);
+    const taxableAmount = terms?.taxesIncluded ? 0 : (discountedTotal + effectiveFreight);
+    const gstAmount = (taxableAmount * gstPercent) / 100;
+    const grandTotal = discountedTotal + effectiveFreight + gstAmount;
+
+    const pageWidth = doc.page.width;
+    const left = 52;
+    const right = pageWidth - 52;
+    const tableWidth = right - left;
+
+    doc.rect(0, 0, pageWidth, doc.page.height).fill('#ececec');
+    doc.fillColor('#000000');
+
+    doc.font('Helvetica-Bold').fontSize(14).text('TRUETORQ PRIVATE LIMITED', left, 52, { width: 320 });
+    doc.font('Helvetica').fontSize(8.6);
+    let companyY = 80;
+    companyAddressLines.forEach((line, idx) => {
+      if (idx === companyAddressLines.length - 1) {
+        doc.font('Helvetica-Bold').text(line, left, companyY, { width: 320 });
+        doc.font('Helvetica');
+      } else {
+        doc.text(line, left, companyY, { width: 320 });
       }
-      
-      // Try case-insensitive
-      user = await UserModel.findOne({ email: new RegExp(`^${email.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') });
-      if (user) {
-        mongoose.connection.useDb(db);
-        return user;
-      }
-      
-      // Try lowercase
-      user = await UserModel.findOne({ email: email.toLowerCase() });
-      if (user) {
-        mongoose.connection.useDb(db);
-        return user;
-      }
-    } catch (e) {
-      // Database doesn't exist or error, continue
-      console.log(`Database ${db} not accessible:`, e.message);
+      companyY += 15;
+    });
+
+    const logoX = right - 140;
+    const logoY = 52;
+    doc.circle(logoX + 58, logoY + 34, 30).lineWidth(3).strokeColor('#2f5aa8').stroke();
+    doc.font('Helvetica-Bold').fontSize(44).fillColor('#2f5aa8').text('tt', logoX + 30, logoY + 12, { width: 60, align: 'center' });
+    doc.fillColor('#4b5563').font('Helvetica').fontSize(20).text('C', logoX + 64, logoY + 8, { width: 50, align: 'center' });
+    doc.fillColor('#000000');
+
+    doc.font('Helvetica').fontSize(37 / 2).fillColor('#6b7280').text('Quotation', right - 118, 156, { width: 118, align: 'right' });
+    doc.moveTo(right - 205, 182).lineTo(right, 182).strokeColor('#8b8b8b').lineWidth(0.8).stroke();
+    doc.fillColor('#000000').font('Helvetica-Bold').fontSize(10).text('DATE', right - 170, 188, { width: 45, align: 'left' });
+    doc.font('Helvetica').fontSize(10).text(formattedDate, right - 120, 188, { width: 120, align: 'left' });
+    doc.font('Helvetica-Bold').text('Quotation #', right - 170, 206, { width: 80, align: 'left' });
+    doc.font('Helvetica').text(quotationNo, right - 95, 206, { width: 95, align: 'left' });
+    doc.font('Helvetica-Oblique').text('Quotation valid until:', right - 170, 223, { width: 95, align: 'left' });
+    doc.font('Helvetica').text(validUntil, right - 75, 223, { width: 75, align: 'left' });
+
+    const preparedY = 241;
+    doc.rect(right - 170, preparedY, 170, 58).fill('#dce5c7');
+    doc.fillColor('#000000').font('Helvetica-Oblique').fontSize(9).text('Prepared by:', right - 164, preparedY + 6);
+    doc.font('Helvetica').text(preparedBy, right - 96, preparedY + 6, { width: 90, align: 'left' });
+    doc.font('Helvetica-Oblique').text('Contact No:', right - 164, preparedY + 23);
+    doc.font('Helvetica').text(String(contactNo), right - 96, preparedY + 23, { width: 90, align: 'left' });
+    doc.font('Helvetica-Oblique').text('Email ID:', right - 164, preparedY + 40);
+    doc.font('Helvetica').fontSize(8).text(emailId, right - 96, preparedY + 40, { width: 90, align: 'left' });
+    doc.fillColor('#000000');
+
+    let y = 210;
+    doc.font('Helvetica-Bold').fontSize(11).text('Quotation For:', left, y);
+    y += 16;
+    const labelW = 62;
+    const valStart = left + labelW + 4;
+    const splitX = right - 245;
+    const infoRows = [
+      { label: 'Company', value: companyName },
+      { label: 'Name', value: customerName },
+      { label: 'Location', value: location },
+      { label: 'Kind attn', value: kindAttn },
+      { label: 'Phone', value: String(contactNo) },
+      { label: 'Ref', value: refValue },
+    ];
+    infoRows.forEach((row) => {
+      doc.font('Helvetica').fontSize(9).text(`${row.label}:`, left, y, { width: labelW });
+      doc.font(row.label === 'Company' ? 'Helvetica-Bold' : 'Helvetica').text(row.value || '-', valStart, y, { width: splitX - valStart });
+      doc.moveTo(valStart, y + 14).lineTo(splitX, y + 14).strokeColor('#9ca3af').lineWidth(0.6).stroke();
+      y += 18;
+    });
+
+    const tableTop = 336;
+    const headerH = 26;
+    const rowH = 68;
+    // Keep total columns exactly within available table width (A4-safe)
+    const col = { sl: 24, desc: 92, ttDesc: 110, qty: 28, hsn: 40, unit: 52, discount: 35, final: 48, total: 62 };
+    const x = {
+      sl: left,
+      desc: left + col.sl,
+      ttDesc: left + col.sl + col.desc,
+      qty: left + col.sl + col.desc + col.ttDesc,
+      hsn: left + col.sl + col.desc + col.ttDesc + col.qty,
+      unit: left + col.sl + col.desc + col.ttDesc + col.qty + col.hsn,
+      discount: left + col.sl + col.desc + col.ttDesc + col.qty + col.hsn + col.unit,
+      final: left + col.sl + col.desc + col.ttDesc + col.qty + col.hsn + col.unit + col.discount,
+      total: left + col.sl + col.desc + col.ttDesc + col.qty + col.hsn + col.unit + col.discount + col.final,
+    };
+
+    doc.rect(left, tableTop, tableWidth, headerH).strokeColor('#808080').lineWidth(0.8).stroke();
+    [x.desc, x.ttDesc, x.qty, x.hsn, x.unit, x.discount, x.final, x.total].forEach((vx) => {
+      doc.moveTo(vx, tableTop).lineTo(vx, tableTop + headerH).strokeColor('#808080').lineWidth(0.8).stroke();
+    });
+    doc.font('Helvetica-Bold').fontSize(7.4);
+    doc.text('Sl No', x.sl + 3, tableTop + 8, { width: col.sl - 6, align: 'center' });
+    doc.text('DESCRIPTION', x.desc + 3, tableTop + 8, { width: col.desc - 6, align: 'center' });
+    doc.text('TT\nDESCRIPTION', x.ttDesc + 3, tableTop + 3, { width: col.ttDesc - 6, align: 'center' });
+    doc.text('QTY\n(Nos)', x.qty + 2, tableTop + 3, { width: col.qty - 4, align: 'center' });
+    doc.text('HSN', x.hsn + 2, tableTop + 8, { width: col.hsn - 4, align: 'center' });
+    doc.text('Unit Price', x.unit + 2, tableTop + 8, { width: col.unit - 4, align: 'center' });
+    doc.text('Discount', x.discount + 1, tableTop + 8, { width: col.discount - 2, align: 'center' });
+    doc.text('Final Price', x.final + 2, tableTop + 8, { width: col.final - 4, align: 'center' });
+    doc.text('TOTAL AMOUNT', x.total + 2, tableTop + 8, { width: col.total - 4, align: 'center' });
+
+    let rowY = tableTop + headerH;
+    normalizedItems.forEach((item, idx) => {
+      doc.rect(left, rowY, tableWidth, rowH).strokeColor('#808080').lineWidth(0.8).stroke();
+      [x.desc, x.ttDesc, x.qty, x.hsn, x.unit, x.discount, x.final, x.total].forEach((vx) => {
+        doc.moveTo(vx, rowY).lineTo(vx, rowY + rowH).strokeColor('#808080').lineWidth(0.8).stroke();
+      });
+      doc.font('Helvetica').fontSize(8);
+      doc.text(String(idx + 1), x.sl + 3, rowY + 34, { width: col.sl - 6, align: 'center' });
+      doc.text(item.productName, x.desc + 3, rowY + 4, { width: col.desc - 6, align: 'left' });
+      const ttDescription = [item.model !== '-' ? `Model : ${item.model}` : null, `Make: ${item.make}`, `Design : ${item.design}`]
+        .filter(Boolean)
+        .join('\n');
+      doc.text(ttDescription, x.ttDesc + 4, rowY + 4, { width: col.ttDesc - 8, align: 'left' });
+      doc.text(String(item.qty), x.qty + 2, rowY + 34, { width: col.qty - 4, align: 'center' });
+      doc.text(item.hsn, x.hsn + 2, rowY + 34, { width: col.hsn - 4, align: 'center' });
+      doc.text(item.unitPrice.toLocaleString('en-IN'), x.unit + 2, rowY + 34, { width: col.unit - 4, align: 'right' });
+      doc.text(item.discountPct > 0 ? `${item.discountPct}%` : '-', x.discount + 2, rowY + 34, { width: col.discount - 4, align: 'center' });
+      doc.text(item.finalPrice.toLocaleString('en-IN'), x.final + 2, rowY + 34, { width: col.final - 4, align: 'right' });
+      doc.font('Helvetica-Bold').text(item.amount.toLocaleString('en-IN'), x.total + 2, rowY + 34, { width: col.total - 4, align: 'right' });
+      rowY += rowH;
+    });
+
+    let totalsTop = rowY;
+    // Ensure totals + terms always remain visible on-page
+    if (totalsTop + 250 > doc.page.height - 40) {
+      doc.addPage();
+      doc.rect(0, 0, pageWidth, doc.page.height).fill('#ececec');
+      doc.fillColor('#000000');
+      totalsTop = 70;
     }
-  }
-  return null;
-};
-// Helper function to get Lead model from the correct database
-const getLeadModel = (dbName = 'protorq') => {
-  const db = mongoose.connection.useDb(dbName);
-  return db.model('Lead', LeadSchema, 'leads');
-};
+    const totalsLabelW = tableWidth - col.total;
+    doc.rect(left, totalsTop, tableWidth, 66).strokeColor('#808080').lineWidth(0.8).stroke();
+    doc.moveTo(left + totalsLabelW, totalsTop).lineTo(left + totalsLabelW, totalsTop + 66).stroke();
+    doc.moveTo(left, totalsTop + 22).lineTo(right, totalsTop + 22).stroke();
+    doc.moveTo(left, totalsTop + 44).lineTo(right, totalsTop + 44).stroke();
+    doc.font('Helvetica-Bold').fontSize(10)
+      .text('TOTAL', left + totalsLabelW - 70, totalsTop + 6, { width: 66, align: 'right' })
+      .text('Freight', left + totalsLabelW - 70, totalsTop + 28, { width: 66, align: 'right' })
+      .text('GST', left + totalsLabelW - 70, totalsTop + 50, { width: 66, align: 'right' });
+    doc.text(discountedTotal.toLocaleString('en-IN'), x.total + 4, totalsTop + 6, { width: col.total - 8, align: 'right' });
+    doc.font('Helvetica').text(effectiveFreight > 0 ? effectiveFreight.toLocaleString('en-IN') : '-', x.total + 4, totalsTop + 28, { width: col.total - 8, align: 'right' });
+    doc.text(`${gstPercent}%`, x.total + 4, totalsTop + 50, { width: 26, align: 'left' });
+    doc.font('Helvetica-Bold').text(gstAmount.toLocaleString('en-IN'), x.total + 34, totalsTop + 50, { width: col.total - 38, align: 'right' });
 
-// Helper function to get Product model from the correct database
-const getProductModel = (dbName = 'protorq') => {
-  const db = mongoose.connection.useDb(dbName);
-  return db.model('Product', ProductSchema, 'products');
-};
+    doc.rect(left + totalsLabelW, totalsTop + 66, col.total, 18).strokeColor('#808080').lineWidth(0.8).stroke();
+    doc.rect(left + totalsLabelW - 86, totalsTop + 66, 86, 18).strokeColor('#808080').lineWidth(0.8).stroke();
+    doc.font('Helvetica-Bold').text('Grand Total', left + totalsLabelW - 82, totalsTop + 70, { width: 78, align: 'left' });
+    doc.text(grandTotal.toLocaleString('en-IN'), x.total + 4, totalsTop + 70, { width: col.total - 8, align: 'right' });
 
-// Helper function to find leads across databases
-const findLeadsInDatabase = async (dbName = null) => {
-  const possibleDbs = dbName ? [dbName] : ['protorq', 'Protorq', 'protoq', 'Protoq', 'test'];
-  let allLeads = [];
-  
-  for (const db of possibleDbs) {
-    try {
-      const LeadModel = getLeadModel(db);
-      const leads = await LeadModel.find();
-      if (leads.length > 0) {
-        allLeads = [...allLeads, ...leads];
-        // If we found leads, prefer this database for future queries
-        mongoose.connection.useDb(db);
-        console.log(`Found ${leads.length} leads in database: ${db}`);
-      }
-    } catch (e) {
-      // Database doesn't exist or error, continue
-      console.log(`Database ${db} not accessible for leads:`, e.message);
-    }
-  }
-  
-  return allLeads;
-};
+    const termsTop = totalsTop + 106;
+    doc.font('Helvetica-Bold').fontSize(10).text('Terms and conditions', left, termsTop - 14);
+    const tRows = [
+      { title: 'Prices', value: terms?.priceBasis || 'EXW TrueTorq Private Limited, Hubballi as per INCOTERM 2020' },
+      { title: 'Payment Terms', value: terms?.paymentTerms || '100% Advance against PI' },
+      { title: 'Taxes', value: terms?.taxesText || (terms?.taxesIncluded ? `Included in prices` : `GST extra @${gstPercent}% actual at current rate.`) },
+      { title: 'Packing & Forwarding', value: terms?.packingForwarding || 'Included' },
+      { title: 'Freight', value: terms?.freightText || (terms?.shippingIncluded ? 'Included in prices' : (freightAmount > 0 ? 'To pay' : 'Included')) },
+      { title: 'Delivery', value: `${terms?.deliveryPeriod || '1'} ${terms?.deliveryUnit || 'week'} from the date of PO` },
+    ];
+    const tNoW = 45;
+    const tNameW = 170;
+    const tValW = tableWidth - tNoW - tNameW;
+    let tY = termsTop;
+    tRows.forEach((row, idx) => {
+      const rH = idx === 2 ? 26 : 20;
+      doc.rect(left, tY, tableWidth, rH).strokeColor('#808080').lineWidth(0.8).stroke();
+      doc.moveTo(left + tNoW, tY).lineTo(left + tNoW, tY + rH).stroke();
+      doc.moveTo(left + tNoW + tNameW, tY).lineTo(left + tNoW + tNameW, tY + rH).stroke();
+      doc.font('Helvetica').fontSize(8.5).text(String(idx + 1), left + 2, tY + 6, { width: tNoW - 4, align: 'center' });
+      doc.text(row.title, left + tNoW + 3, tY + 6, { width: tNameW - 6, align: 'left' });
+      doc.text(row.value, left + tNoW + tNameW + 3, tY + 6, { width: tValW - 6, align: 'left' });
+      tY += rH;
+    });
 
-const Lead = mongoose.model('Lead', LeadSchema);
-const Product = mongoose.model('Product', ProductSchema);
-const Quotation = mongoose.model('Quotation', QuotationSchema);
+    doc.font('Helvetica-Bold').fontSize(11).text('THANK YOU FOR YOUR BUSINESS!', left, tY + 12, { width: tableWidth, align: 'center' });
+    doc.end();
+  });
 
 // Auth Middleware
 const authenticateToken = (req, res, next) => {
@@ -283,10 +439,7 @@ app.post('/api/auth/create-test-user', async (req, res) => {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
     
-    // Create user in protorq database
-    const db = mongoose.connection.useDb('protorq');
-    const UserModel = db.model('User', UserSchema, 'users');
-    
+    const UserModel = getUserModel();
     user = new UserModel({
       email: email,
       password: hashedPassword,
@@ -307,24 +460,23 @@ app.get('/api/auth/debug/user/:email', async (req, res) => {
   try {
     const { email } = req.params;
     console.log('Debug: Searching for user with email:', email);
-    console.log('Debug: Database name:', mongoose.connection.db?.databaseName);
-    console.log('Debug: Collection name:', User.collection.name);
-    
-    // List all users first
-    const allUsers = await User.find().select('email role -_id').limit(10);
+    const UserModel = getUserModel();
+    console.log('Debug: Database name:', DB_NAME);
+    console.log('Debug: Collection name:', UserModel.collection.name);
+
+    const allUsers = await UserModel.find().select('email role -_id').limit(10);
     console.log('Debug: All users in database:', allUsers);
-    
-    const user = await User.findOne({ email: email });
+
+    const user = await UserModel.findOne({ email: email });
     if (!user) {
-      // Try case-insensitive
-      const userCI = await User.findOne({ email: new RegExp(`^${email.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') });
+      const userCI = await UserModel.findOne({ email: new RegExp(`^${email.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') });
       if (!userCI) {
         return res.json({ 
           found: false, 
           message: 'User not found',
           searchedEmail: email,
-          database: mongoose.connection.db?.databaseName,
-          collection: User.collection.name,
+          database: DB_NAME,
+          collection: UserModel.collection.name,
           allUsers: allUsers
         });
       }
@@ -362,12 +514,10 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(400).json({ message: 'Email and password are required' });
     }
 
-    // Find user in the existing users collection - search across all databases
     let user = await findUserInDatabase(email);
     
     if (!user) {
-      // Debug: show sample emails in database
-      const sampleUsers = await User.find().select('email -_id').limit(5);
+      const sampleUsers = await getUserModel().find().select('email -_id').limit(5);
       console.log('❌ User not found. Searched for:', email);
       console.log('Sample emails in database:', sampleUsers.map(u => u.email));
       return res.status(401).json({ message: 'Invalid email or password' });
@@ -441,36 +591,7 @@ app.get('/api/users', authenticateToken, async (req, res) => {
       return res.status(403).json({ message: 'Admin access required' });
     }
     
-    // Try to find users in the protorq database first
-    let users = [];
-    const possibleDbs = ['protorq', 'Protorq', 'protoq', 'Protoq', 'test'];
-    
-    for (const db of possibleDbs) {
-      try {
-        const dbConnection = mongoose.connection.useDb(db);
-        const UserModel = dbConnection.model('User', UserSchema, 'users');
-        users = await UserModel.find({ role: 'user' });
-        if (users.length > 0) {
-          console.log(`Found ${users.length} users with role 'user' in ${db} database`);
-          mongoose.connection.useDb(db);
-          break;
-        }
-      } catch (e) {
-        console.log(`Database ${db} not accessible for users:`, e.message);
-      }
-    }
-    
-    // If no users found, try current database
-    if (users.length === 0) {
-      try {
-        users = await User.find({ role: 'user' });
-        console.log(`Found ${users.length} users with role 'user' in current database`);
-      } catch (e) {
-        console.log('Error fetching users from current database:', e.message);
-      }
-    }
-    
-    console.log(`Total users with role 'user' found: ${users.length}`);
+    const users = await getUserModel().find({ role: 'user' });
     res.json(users);
   } catch (error) {
     console.error('Error fetching users:', error);
@@ -485,7 +606,7 @@ app.post('/api/users', authenticateToken, async (req, res) => {
     }
     const { email, password, role = 'user' } = req.body;
     const hashedPassword = await bcrypt.hash(password, 10);
-    const user = new User({ email: email.toLowerCase(), password: hashedPassword, role });
+    const user = new (getUserModel())({ email: email.toLowerCase(), password: hashedPassword, role });
     await user.save();
     res.status(201).json({ _id: user._id, email: user.email, role: user.role });
   } catch (error) {
@@ -502,7 +623,7 @@ app.put('/api/users/:id', authenticateToken, async (req, res) => {
     if (req.body.password) {
       update.password = await bcrypt.hash(req.body.password, 10);
     }
-    const user = await User.findByIdAndUpdate(req.params.id, update, { new: true });
+    const user = await getUserModel().findByIdAndUpdate(req.params.id, update, { new: true });
     if (!user) return res.status(404).json({ message: 'User not found' });
     res.json({ _id: user._id, email: user.email, role: user.role });
   } catch (error) {
@@ -515,7 +636,7 @@ app.delete('/api/users/:id', authenticateToken, async (req, res) => {
     if (req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Admin access required' });
     }
-    await User.findByIdAndDelete(req.params.id);
+    await getUserModel().findByIdAndDelete(req.params.id);
     res.json({ message: 'User deleted' });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -529,36 +650,7 @@ app.get('/api/employees', authenticateToken, async (req, res) => {
       return res.status(403).json({ message: 'Admin access required' });
     }
     
-    // Try to find employees in the protorq database first
-    let employees = [];
-    const possibleDbs = ['protorq', 'Protorq', 'protoq', 'Protoq', 'test'];
-    
-    for (const db of possibleDbs) {
-      try {
-        const dbConnection = mongoose.connection.useDb(db);
-        const UserModel = dbConnection.model('User', UserSchema, 'users');
-        employees = await UserModel.find({ role: 'employee' });
-        if (employees.length > 0) {
-          console.log(`Found ${employees.length} employees in ${db} database`);
-          mongoose.connection.useDb(db);
-          break;
-        }
-      } catch (e) {
-        console.log(`Database ${db} not accessible for employees:`, e.message);
-      }
-    }
-    
-    // If no employees found, try current database
-    if (employees.length === 0) {
-      try {
-        employees = await User.find({ role: 'employee' });
-        console.log(`Found ${employees.length} employees in current database`);
-      } catch (e) {
-        console.log('Error fetching employees from current database:', e.message);
-      }
-    }
-    
-    console.log(`Total employees found: ${employees.length}`);
+    const employees = await getUserModel().find({ role: 'employee' });
     res.json(employees);
   } catch (error) {
     console.error('Error fetching employees:', error);
@@ -573,7 +665,7 @@ app.post('/api/employees', authenticateToken, async (req, res) => {
     }
     const { email, password, role = 'employee' } = req.body;
     const hashedPassword = await bcrypt.hash(password, 10);
-    const employee = new User({ email: email.toLowerCase(), password: hashedPassword, role });
+    const employee = new (getUserModel())({ email: email.toLowerCase(), password: hashedPassword, role });
     await employee.save();
     res.status(201).json({ _id: employee._id, email: employee.email, role: employee.role });
   } catch (error) {
@@ -590,7 +682,7 @@ app.put('/api/employees/:id', authenticateToken, async (req, res) => {
     if (req.body.password) {
       update.password = await bcrypt.hash(req.body.password, 10);
     }
-    const employee = await User.findByIdAndUpdate(req.params.id, update, { new: true });
+    const employee = await getUserModel().findByIdAndUpdate(req.params.id, update, { new: true });
     if (!employee) return res.status(404).json({ message: 'Employee not found' });
     res.json({ _id: employee._id, email: employee.email, role: employee.role });
   } catch (error) {
@@ -603,7 +695,7 @@ app.delete('/api/employees/:id', authenticateToken, async (req, res) => {
     if (req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Admin access required' });
     }
-    await User.findByIdAndDelete(req.params.id);
+    await getUserModel().findByIdAndDelete(req.params.id);
     res.json({ message: 'Employee deleted' });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -613,51 +705,7 @@ app.delete('/api/employees/:id', authenticateToken, async (req, res) => {
 // Product Routes
 app.get('/api/products', authenticateToken, async (req, res) => {
   try {
-    // Try to find products in the protorq database first
-    let products = [];
-    const possibleDbs = ['protorq', 'Protorq', 'protoq', 'Protoq', 'test'];
-    
-    // Try protorq database first (most likely)
-    try {
-      const ProductModel = getProductModel('protorq');
-      products = await ProductModel.find();
-      console.log(`Found ${products.length} products in protorq database`);
-      if (products.length > 0) {
-        mongoose.connection.useDb('protorq');
-      }
-    } catch (e) {
-      console.log('protorq database not accessible for products, trying other databases...');
-    }
-    
-    // If no products found, search across all databases
-    if (products.length === 0) {
-      for (const db of possibleDbs) {
-        try {
-          const ProductModel = getProductModel(db);
-          const dbProducts = await ProductModel.find();
-          if (dbProducts.length > 0) {
-            products = dbProducts;
-            mongoose.connection.useDb(db);
-            console.log(`Found ${products.length} products in ${db} database`);
-            break;
-          }
-        } catch (e) {
-          console.log(`Database ${db} not accessible for products:`, e.message);
-        }
-      }
-    }
-    
-    // If still no products, try current database
-    if (products.length === 0) {
-      try {
-        products = await Product.find();
-        console.log(`Found ${products.length} products in current database`);
-      } catch (e) {
-        console.log('Error fetching products from current database:', e.message);
-      }
-    }
-    
-    console.log(`Total products found: ${products.length}`);
+    const products = await getProductModel().find();
     res.json(products);
   } catch (error) {
     console.error('Error fetching products:', error);
@@ -670,7 +718,7 @@ app.post('/api/products', authenticateToken, async (req, res) => {
     if (req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Admin access required' });
     }
-    const product = new Product(req.body);
+    const product = new (getProductModel())(req.body);
     await product.save();
     res.status(201).json(product);
   } catch (error) {
@@ -683,7 +731,7 @@ app.put('/api/products/:id', authenticateToken, async (req, res) => {
     if (req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Admin access required' });
     }
-    const product = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const product = await getProductModel().findByIdAndUpdate(req.params.id, req.body, { new: true });
     if (!product) return res.status(404).json({ message: 'Product not found' });
     res.json(product);
   } catch (error) {
@@ -696,7 +744,7 @@ app.delete('/api/products/:id', authenticateToken, async (req, res) => {
     if (req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Admin access required' });
     }
-    await Product.findByIdAndDelete(req.params.id);
+    await getProductModel().findByIdAndDelete(req.params.id);
     res.json({ message: 'Product deleted' });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -704,77 +752,67 @@ app.delete('/api/products/:id', authenticateToken, async (req, res) => {
 });
 
 // Lead Routes
+app.post('/api/leads', requireDb, async (req, res) => {
+  try {
+    const {
+      productName,
+      requesterEmail,
+      contactNumber,
+      quantity,
+      quantityRequested,
+      items,
+      quotationFor,
+    } = req.body;
+
+    if (!productName || !requesterEmail) {
+      return res.status(400).json({ message: 'productName and requesterEmail are required' });
+    }
+
+    const leadPayload = {
+      productName,
+      requesterEmail: requesterEmail.toLowerCase(),
+      contactNumber: contactNumber || '',
+      quotationFor: quotationFor ? {
+        company: quotationFor.company || '',
+        name: quotationFor.name || '',
+        location: quotationFor.location || '',
+        kindAttn: quotationFor.kindAttn || '',
+        phone: quotationFor.phone || contactNumber || '',
+        email: quotationFor.email || requesterEmail || '',
+        reference: quotationFor.reference || '',
+      } : undefined,
+      quantity: Number(quantity) > 0 ? Number(quantity) : 1,
+      quantityRequested: Number(quantityRequested) > 0 ? Number(quantityRequested) : undefined,
+      status: 'pending',
+      items: Array.isArray(items) ? items : undefined,
+    };
+
+    const LeadModel = getLeadModel();
+    const lead = new LeadModel(leadPayload);
+    await lead.save();
+
+    res.status(201).json(lead);
+  } catch (error) {
+    console.error('Error creating lead:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
 app.get('/api/leads', authenticateToken, async (req, res) => {
   try {
     // If employee, filter by assignedEmployee
     const isEmployee = req.user.role?.toLowerCase() === 'employee';
     const employeeEmail = isEmployee ? req.user.email : null;
     
-    // Try to find leads in the protorq database first
-    let leads = [];
-    
-    // Try protorq database first (most likely)
-    try {
-      const LeadModel = getLeadModel('protorq');
-      if (isEmployee && employeeEmail) {
-        // Filter by assignedEmployee for employees
-        leads = await LeadModel.find({ 
-          assignedEmployee: { $regex: new RegExp(employeeEmail, 'i') } 
-        });
-        console.log(`Found ${leads.length} leads assigned to employee ${employeeEmail} in protorq database`);
-      } else {
-        // Admin gets all leads
-        leads = await LeadModel.find();
-        console.log(`Found ${leads.length} leads in protorq database`);
-      }
-    } catch (e) {
-      console.log('protorq database not accessible, trying other databases...');
+    const LeadModel = getLeadModel();
+    let leads;
+    if (isEmployee && employeeEmail) {
+      leads = await LeadModel.find({
+        assignedEmployee: { $regex: new RegExp(employeeEmail, 'i') },
+      });
+    } else {
+      leads = await LeadModel.find();
     }
-    
-    // If no leads found, search across all databases
-    if (leads.length === 0) {
-      if (isEmployee && employeeEmail) {
-        // Search across databases for employee leads
-        const possibleDbs = ['protorq', 'Protorq', 'protoq', 'Protoq', 'test'];
-        for (const db of possibleDbs) {
-          try {
-            const LeadModel = getLeadModel(db);
-            const dbLeads = await LeadModel.find({ 
-              assignedEmployee: { $regex: new RegExp(employeeEmail, 'i') } 
-            });
-            if (dbLeads.length > 0) {
-              leads = dbLeads;
-              mongoose.connection.useDb(db);
-              console.log(`Found ${leads.length} leads assigned to employee in ${db} database`);
-              break;
-            }
-          } catch (e) {
-            console.log(`Database ${db} not accessible for employee leads:`, e.message);
-          }
-        }
-      } else {
-        leads = await findLeadsInDatabase();
-      }
-    }
-    
-    // If still no leads, try current database
-    if (leads.length === 0) {
-      try {
-        if (isEmployee && employeeEmail) {
-          leads = await Lead.find({ 
-            assignedEmployee: { $regex: new RegExp(employeeEmail, 'i') } 
-          });
-          console.log(`Found ${leads.length} leads assigned to employee in current database`);
-        } else {
-          leads = await Lead.find();
-          console.log(`Found ${leads.length} leads in current database`);
-        }
-      } catch (e) {
-        console.log('Error fetching from current database:', e.message);
-      }
-    }
-    
-    console.log(`Total leads found: ${leads.length}`);
     res.json(leads);
   } catch (error) {
     console.error('Error fetching leads:', error);
@@ -786,29 +824,8 @@ app.put('/api/leads/:id/assign', authenticateToken, async (req, res) => {
   try {
     const { assignedEmployee, comment } = req.body;
     
-    // Try to find lead in protorq database first
-    let lead = null;
-    let LeadModel = null;
-    const possibleDbs = ['protorq', 'Protorq', 'protoq', 'Protoq', 'test'];
-    
-    for (const db of possibleDbs) {
-      try {
-        LeadModel = getLeadModel(db);
-        lead = await LeadModel.findById(req.params.id);
-        if (lead) {
-          mongoose.connection.useDb(db);
-          break;
-        }
-      } catch (e) {
-        // Continue to next database
-      }
-    }
-    
-    // If not found, try current database
-    if (!lead) {
-      lead = await Lead.findById(req.params.id);
-    }
-    
+    const LeadModel = getLeadModel();
+    const lead = await LeadModel.findById(req.params.id);
     if (!lead) return res.status(404).json({ message: 'Lead not found' });
     
     // Set both assignedTo and assignedEmployee for compatibility
@@ -840,28 +857,10 @@ app.delete('/api/leads/:id', authenticateToken, async (req, res) => {
       return res.status(403).json({ message: 'Admin access required' });
     }
     
-    // Try to find and delete lead in protorq database first
-    let deleted = false;
-    const possibleDbs = ['protorq', 'Protorq', 'protoq', 'Protoq', 'test'];
-    
-    for (const db of possibleDbs) {
-      try {
-        const LeadModel = getLeadModel(db);
-        const result = await LeadModel.findByIdAndDelete(req.params.id);
-        if (result) {
-          deleted = true;
-          break;
-        }
-      } catch (e) {
-        // Continue to next database
-      }
+    const result = await getLeadModel().findByIdAndDelete(req.params.id);
+    if (!result) {
+      return res.status(404).json({ message: 'Lead not found' });
     }
-    
-    // If not found, try current database
-    if (!deleted) {
-      await Lead.findByIdAndDelete(req.params.id);
-    }
-    
     res.json({ message: 'Lead deleted' });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -872,34 +871,20 @@ app.delete('/api/leads/:id', authenticateToken, async (req, res) => {
 app.get('/api/quotation/:id', authenticateToken, async (req, res) => {
   try {
     const leadId = req.params.id;
-    
-    // Try to find lead in protorq database first
-    let lead = null;
-    const possibleDbs = ['protorq', 'Protorq', 'protoq', 'Protoq', 'test'];
-    
-    for (const db of possibleDbs) {
-      try {
-        const LeadModel = getLeadModel(db);
-        lead = await LeadModel.findById(leadId);
-        if (lead) {
-          mongoose.connection.useDb(db);
-          break;
-        }
-      } catch (e) {
-        // Continue to next database
-      }
-    }
-    
-    // If not found, try current database
-    if (!lead) {
-      lead = await Lead.findById(leadId);
-    }
-    
+    const lead = await resolveLead(leadId);
     if (!lead) {
       return res.status(404).json({ message: 'Lead not found' });
     }
-    
-    // Check if quotation exists in lead data
+
+    const QuotationModel = getQuotationModel();
+    const savedQuotation = await QuotationModel.findOne({ leadId });
+
+    if (savedQuotation?.pdf && savedQuotation.pdf.length > 0) {
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `inline; filename="quotation-${leadId}.pdf"`);
+      return res.send(savedQuotation.pdf);
+    }
+
     if (!lead.quotation) {
       return res.status(404).json({ message: 'Quotation data not found for this lead' });
     }
@@ -1394,7 +1379,12 @@ app.get('/api/quotation/:id', authenticateToken, async (req, res) => {
 
 app.get('/api/quotation/:id/data', authenticateToken, async (req, res) => {
   try {
-    const quotation = await Quotation.findOne({ leadId: req.params.id });
+    const lead = await resolveLead(req.params.id);
+    if (!lead) {
+      return res.status(404).json({ message: 'Lead not found' });
+    }
+    const QuotationModel = getQuotationModel();
+    const quotation = await QuotationModel.findOne({ leadId: req.params.id });
     if (!quotation) {
       return res.status(404).json({ message: 'Quotation not found' });
     }
@@ -1412,24 +1402,44 @@ app.get('/api/quotation/:id/data', authenticateToken, async (req, res) => {
 app.post('/api/quotation/generate', authenticateToken, async (req, res) => {
   try {
     const { leadId, products, terms, verify, currency } = req.body;
-    
-    // For now, return a simple PDF response
-    // In production, you'd use a PDF library like pdfkit or puppeteer
-    const pdfContent = Buffer.from('%PDF-1.4\n1 0 obj\n<<\n/Type /Catalog\n>>\nendobj\nxref\n0 1\ntrailer\n<<\n/Root 1 0 R\n>>\n%%EOF');
-    
-    let quotation = await Quotation.findOne({ leadId });
+    const loggedInUser = req.user?.email ? await findUserInDatabase(req.user.email) : null;
+    const preparedByName = loggedInUser?.name || req.user?.email || 'sales@truetorq.com';
+
+    const lead = await resolveLead(leadId);
+    if (!lead) {
+      return res.status(404).json({ message: 'Lead not found' });
+    }
+
+    const mergedVerify = {
+      ...(lead?.quotationFor ? {
+        companyName: lead.quotationFor.company,
+        customerName: lead.quotationFor.name,
+        location: lead.quotationFor.location,
+        kindAttn: lead.quotationFor.kindAttn,
+        pnsPhone: lead.quotationFor.phone,
+        reference: lead.quotationFor.reference,
+      } : {}),
+      ...(verify || {}),
+      preparedBy: preparedByName,
+    };
+
+    const pdfContent = await buildQuotationPdfBuffer({ lead, products, terms, verify: mergedVerify, currency });
+    const QuotationModel = getQuotationModel();
+    const LeadModel = getLeadModel();
+
+    let quotation = await QuotationModel.findOne({ leadId });
     if (quotation) {
       quotation.products = products;
       quotation.terms = terms;
-      quotation.verify = verify;
+      quotation.verify = mergedVerify;
       quotation.currency = currency;
       quotation.pdf = pdfContent;
     } else {
-      quotation = new Quotation({
+      quotation = new QuotationModel({
         leadId,
         products,
         terms,
-        verify,
+        verify: mergedVerify,
         currency,
         pdf: pdfContent
       });
@@ -1437,9 +1447,16 @@ app.post('/api/quotation/generate', authenticateToken, async (req, res) => {
     await quotation.save();
     
     // Update lead status
-    await Lead.findByIdAndUpdate(leadId, { 
+    await LeadModel.findByIdAndUpdate(leadId, {
       status: 'completed',
-      quotation: { exists: true }
+      quotation: {
+        products,
+        terms,
+        verify: mergedVerify,
+        currency,
+        generatedAt: new Date(),
+        exists: true
+      }
     });
     
     res.setHeader('Content-Type', 'application/pdf');
@@ -1464,13 +1481,28 @@ app.post('/api/quotation/send', authenticateToken, async (req, res) => {
 
 // Health check
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: 'Server is running' });
+  const dbConnected = isDbConnected();
+  res.status(dbConnected ? 200 : 503).json({
+    status: dbConnected ? 'ok' : 'degraded',
+    message: dbConnected ? 'Server is running' : 'Server up but database not connected',
+    database: dbConnected ? mongoose.connection.name || DB_NAME : null,
+  });
 });
 
-// Start server
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`✅ Backend server running on http://0.0.0.0:${PORT}`);
-  console.log(`✅ Backend accessible on http://localhost:${PORT}`);
-  console.log(`📊 MongoDB connection: ${mongoose.connection.readyState === 1 ? 'Connected' : 'Connecting...'}`);
-});
+const startServer = async () => {
+  try {
+    await connectMongo();
+  } catch (error) {
+    console.error('❌ Error connecting to MongoDB:', error.message);
+    console.error('   API routes that need the database will return 503 until MongoDB is reachable.');
+  }
+
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`✅ Backend server running on http://0.0.0.0:${PORT}`);
+    console.log(`✅ Backend accessible on http://localhost:${PORT}`);
+    console.log(`📊 MongoDB: ${isDbConnected() ? `Connected (${mongoose.connection.name || DB_NAME})` : 'Not connected'}`);
+  });
+};
+
+startServer();
 

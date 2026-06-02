@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import axios from 'axios';
@@ -24,6 +24,17 @@ import {
   Plus
 } from 'lucide-react';
 import { API_URL } from '../../config/api';
+import {
+  applyLeadFilters,
+  emptyLeadFilters,
+  hasActiveLeadFilters,
+  type LeadFilters,
+  type QuotationFor,
+} from '../../utils/leadFilters';
+import { exportLeadsToExcel } from '../../utils/leadExport';
+import { AdminSectionToolbar } from './AdminSectionToolbar';
+import { LeadFilterPanel } from './LeadFilterPanel';
+import { ProductNameAutocomplete, type CatalogProduct } from './ProductNameAutocomplete';
 
 interface User {
   _id: string;
@@ -52,10 +63,12 @@ interface Lead {
   status: 'pending' | 'assigned' | 'in-progress' | 'completed';
   assignedTo?: string;
   assignedEmployee?: string;
+  quotationFor?: QuotationFor;
+  items?: { product: string; quantity: number }[];
   createdAt: string;
   updatedAt?: string;
-  quotation?: any;
-  comments?: any[];
+  quotation?: unknown;
+  comments?: { comment?: string; authorType?: string; createdAt?: string }[];
 }
 
 export function Employee() {
@@ -81,6 +94,8 @@ export function Employee() {
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showQuotationModal, setShowQuotationModal] = useState(false);
   const [error, setError] = useState('');
+  const [showLeadFilters, setShowLeadFilters] = useState(false);
+  const [leadFilters, setLeadFilters] = useState<LeadFilters>(emptyLeadFilters);
   
   // Quotation Generation State
   const [currentStep, setCurrentStep] = useState(1);
@@ -92,6 +107,7 @@ export function Employee() {
   
   // Products State
   const [products, setProducts] = useState<QuotationProduct[]>([]);
+  const [catalogProducts, setCatalogProducts] = useState<CatalogProduct[]>([]);
   
   // Terms & Conditions State
   const [termsData, setTermsData] = useState({
@@ -164,6 +180,19 @@ export function Employee() {
   };
   
   // Data Fetching
+  const fetchCatalogProducts = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API_URL}/api/products`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setCatalogProducts(response.data);
+    } catch (err) {
+      console.error('Error fetching catalog products:', err);
+      setCatalogProducts([]);
+    }
+  };
+
   const fetchLeads = async (email: string) => {
     try {
       const token = localStorage.getItem('token');
@@ -208,80 +237,51 @@ export function Employee() {
   const handleGenerateQuotation = async (lead: Lead) => {
     setSelectedLead(lead);
     setError('');
+    setPdfGenerated(false);
+    setPdfUrl(null);
+    setQuotationExists(false);
+    setCurrentStep(1);
+    resetQuotationData();
     
-    // Check if quotation exists
+    // Always restart quotation workflow from step 1.
+    // If an existing quotation is present, prefill form data but keep it editable.
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get(`${API_URL}/api/quotation/${lead._id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-        responseType: 'blob'
+      const dataResponse = await axios.get(`${API_URL}/api/quotation/${lead._id}/data`, {
+        headers: { Authorization: `Bearer ${token}` }
       });
-      
-      // Quotation exists
-      setQuotationExists(true);
-      const blob = new Blob([response.data], { type: 'application/pdf' });
-      const url = URL.createObjectURL(blob);
-      setPdfUrl(url);
-      setPdfGenerated(true);
-      setCurrentStep(4);
-      
-      // Try to load quotation data
-      try {
-        const dataResponse = await axios.get(`${API_URL}/api/quotation/${lead._id}/data`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        const data = dataResponse.data;
-        if (data.products) setProducts(data.products);
-        if (data.terms) setTermsData(data.terms);
-        if (data.verify) setVerifyData(data.verify);
-        if (data.currency) setCurrency(data.currency);
-      } catch (err) {
-        // Data not available, use defaults
-      }
+      const data = dataResponse.data;
+      if (data.products) setProducts(data.products);
+      if (data.terms) setTermsData(data.terms);
+      if (data.verify) setVerifyData(data.verify);
+      if (data.currency) setCurrency(data.currency);
     } catch (err: any) {
-      if (err.response?.status === 404) {
-        // No quotation exists
-        setQuotationExists(false);
-        setProducts([{
-          id: Date.now().toString(),
-          productName: lead.productName || '',
-          description: '',
-          quantity: lead.quantityRequested || lead.quantity || 1,
-          price: '',
-          unit: 'Unit',
-          image: null,
-          selected: true
-        }]);
-        setCurrentStep(1);
-        resetQuotationData();
-      } else {
-        // Error loading, start fresh
-        setQuotationExists(false);
-        setProducts([{
-          id: Date.now().toString(),
-          productName: lead.productName || '',
-          description: '',
-          quantity: lead.quantityRequested || lead.quantity || 1,
-          price: '',
-          unit: 'Unit',
-          image: null,
-          selected: true
-        }]);
-        setCurrentStep(1);
-        resetQuotationData();
-      }
+      // No prior quotation (or fetch failed): start fresh using lead defaults.
+      setProducts([{
+        id: Date.now().toString(),
+        productName: lead.productName || '',
+        description: '',
+        quantity: lead.quantityRequested || lead.quantity || 1,
+        price: '',
+        unit: 'Unit',
+        image: null,
+        selected: true
+      }]);
     }
     
+    await fetchCatalogProducts();
     setShowQuotationModal(true);
   };
   
   const handleViewQuotation = async (leadId: string) => {
+    const newTab = window.open('', '_blank');
     try {
       setError(''); // Clear any previous errors
       const token = localStorage.getItem('token');
       
       if (!token) {
         setError('Authentication required. Please login again.');
+        if (newTab) newTab.close();
         return;
       }
       
@@ -323,21 +323,20 @@ export function Employee() {
       }
       
       const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `quotation-${leadId}.pdf`;
-      a.style.display = 'none';
-      document.body.appendChild(a);
-      a.click();
+      if (newTab) {
+        newTab.location.href = url;
+      } else {
+        window.open(url, '_blank');
+      }
       
       // Cleanup
       setTimeout(() => {
         window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-      }, 100);
+      }, 60_000);
       
-      console.log('PDF downloaded successfully');
+      console.log('PDF opened successfully');
     } catch (error: any) {
+      if (newTab) newTab.close();
       console.error('Error downloading PDF:', error);
       const errorMessage = error.message || 'Failed to download quotation PDF. Please try again.';
       setError(errorMessage);
@@ -386,7 +385,7 @@ export function Employee() {
       if (currentStep === 3) {
         handleGeneratePdf();
       } else {
-        setCurrentStep(currentStep + 1);
+        setCurrentStep(prev => prev + 1);
       }
     }
   };
@@ -429,6 +428,19 @@ export function Employee() {
     setProducts(products.map(p => 
       p.id === id ? { ...p, [field]: value } : p
     ));
+  };
+
+  const handleCatalogProductSelect = (lineId: string, catalog: CatalogProduct) => {
+    const name = catalog.productName || catalog.name || '';
+    const description = catalog.productDescription || catalog.description || '';
+    const price = catalog.price != null ? String(catalog.price) : '';
+    setProducts((prev) =>
+      prev.map((p) =>
+        p.id === lineId
+          ? { ...p, productName: name, description, price }
+          : p
+      )
+    );
   };
   
   const handleSelectAll = () => {
@@ -503,6 +515,7 @@ export function Employee() {
       setPdfUrl(url);
       setPdfGenerated(true);
       setQuotationExists(true);
+      setCurrentStep(4);
       
       if (user) {
         fetchLeads(user.email);
@@ -620,12 +633,34 @@ export function Employee() {
     navigate('/login');
   };
   
-  // Statistics
-  const leadStats = {
-    total: leads.length,
-    pending: leads.filter(l => l.status === 'pending').length,
-    inProgress: leads.filter(l => l.status === 'in-progress').length,
-    completed: leads.filter(l => l.status === 'completed').length
+  const filteredLeads = useMemo(
+    () => applyLeadFilters(leads, leadFilters) as Lead[],
+    [leads, leadFilters]
+  );
+
+  const filtersActive = hasActiveLeadFilters(leadFilters);
+
+  const leadStats = useMemo(
+    () => ({
+      total: filteredLeads.length,
+      pending: filteredLeads.filter((l) => l.status === 'pending').length,
+      assigned: filteredLeads.filter((l) => l.status === 'assigned').length,
+      inProgress: filteredLeads.filter((l) => l.status === 'in-progress').length,
+      completed: filteredLeads.filter((l) => l.status === 'completed').length,
+    }),
+    [filteredLeads]
+  );
+
+  const updateLeadFilter = (key: keyof LeadFilters, value: string) => {
+    setLeadFilters((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const clearLeadFilters = () => setLeadFilters(emptyLeadFilters());
+
+  const handleDownloadLeads = () => {
+    if (filteredLeads.length === 0) return;
+    const stamp = new Date().toISOString().slice(0, 10);
+    exportLeadsToExcel(filteredLeads, `truetorq-employee-leads-${stamp}.xlsx`);
   };
   
   if (loading) {
@@ -711,18 +746,52 @@ export function Employee() {
                   <div>
                     <h2 className="text-xl sm:text-2xl font-black uppercase mb-1 sm:mb-1.5">Lead Management</h2>
                     <div className="font-mono text-[10px] sm:text-xs whitespace-nowrap overflow-x-auto">
-                      Total: {leadStats.total} | Pending: {leadStats.pending} | In Progress: {leadStats.inProgress} | Completed: {leadStats.completed}
+                      {filtersActive && leads.length > 0
+                        ? `Showing ${filteredLeads.length} of ${leads.length} | `
+                        : ''}
+                      Total: {leadStats.total} | Pending: {leadStats.pending} | Assigned: {leadStats.assigned} | In Progress: {leadStats.inProgress} | Completed: {leadStats.completed}
                     </div>
                   </div>
+                  <AdminSectionToolbar
+                    showFilters={showLeadFilters}
+                    onToggleFilters={() => setShowLeadFilters((v) => !v)}
+                    filtersActive={filtersActive}
+                    onDownload={handleDownloadLeads}
+                    downloadDisabled={filteredLeads.length === 0}
+                    filterTitle="Filter leads"
+                  />
                 </div>
+
+                <AnimatePresence>
+                  {showLeadFilters && (
+                    <LeadFilterPanel
+                      leadFilters={leadFilters}
+                      filtersActive={filtersActive}
+                      onUpdate={updateLeadFilter}
+                      onClear={clearLeadFilters}
+                      showAssignedTo={false}
+                    />
+                  )}
+                </AnimatePresence>
                 
                 {leads.length === 0 ? (
                   <div className="text-center py-8 sm:py-10 border-4 border-black">
                     <p className="font-mono text-sm sm:text-base">No leads assigned to you yet</p>
                   </div>
+                ) : filteredLeads.length === 0 ? (
+                  <div className="text-center py-8 sm:py-10 border-4 border-black">
+                    <p className="font-mono text-sm sm:text-base mb-2">No leads match your filters</p>
+                    <button
+                      type="button"
+                      onClick={clearLeadFilters}
+                      className="px-4 py-2 border-2 border-black font-bold uppercase text-xs hover:bg-black hover:text-white transition-colors"
+                    >
+                      Clear filters
+                    </button>
+                  </div>
                 ) : (
                   <div className="space-y-2 sm:space-y-3">
-                    {leads.map((lead) => (
+                    {filteredLeads.map((lead) => (
                       <div key={lead._id} className="border-4 border-black p-3 sm:p-5 bg-white shadow-[6px_6px_0px_0px_#30578e]">
                         <div className="flex flex-col md:flex-row justify-between gap-2 sm:gap-3">
                           <div className="flex-1 min-w-0">
@@ -1105,12 +1174,12 @@ export function Employee() {
                             <div className="space-y-3 sm:space-y-4">
                               <div>
                                 <label className="block font-bold uppercase text-xs sm:text-sm mb-1 sm:mb-2">Product Name</label>
-                                <input
-                                  type="text"
+                                <ProductNameAutocomplete
                                   value={product.productName}
-                                  onChange={(e) => handleProductChange(product.id, 'productName', e.target.value)}
-                                  placeholder="Search product"
-                                  className="w-full border-2 border-black p-2 sm:p-3 font-mono text-sm focus:outline-none focus:bg-black focus:text-white transition-colors"
+                                  onChange={(value) => handleProductChange(product.id, 'productName', value)}
+                                  onSelect={(catalog) => handleCatalogProductSelect(product.id, catalog)}
+                                  catalog={catalogProducts}
+                                  placeholder="Search product by name..."
                                 />
                               </div>
                               
@@ -1476,9 +1545,10 @@ export function Employee() {
                   {currentStep < 4 && (
                     <button
                       onClick={handleNextStep}
+                      disabled={currentStep === 3 && generatingPdf}
                       className="px-2.5 sm:px-3 md:px-4 lg:px-5 py-1.5 sm:py-2 md:py-2.5 border-2 border-black bg-black text-white hover:bg-white hover:text-black transition-colors font-bold uppercase flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs md:text-sm w-full sm:w-auto justify-center"
                     >
-                      Next
+                      {currentStep === 3 && generatingPdf ? 'Generating...' : 'Next'}
                       <ChevronRight size={12} className="sm:w-3.5 sm:h-3.5 md:w-4 md:h-4" />
                     </button>
                   )}

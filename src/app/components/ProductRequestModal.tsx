@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Plus, Trash2, ChevronRight, ChevronDown, Settings } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { API_URL } from '../../config/api';
 
 interface ProductRequestModalProps {
   isOpen: boolean;
@@ -12,9 +13,21 @@ export function ProductRequestModal({ isOpen, onClose, productCode }: ProductReq
   const [items, setItems] = useState([{ product: productCode, quantity: 1 }]);
   const [isSpecsOpen, setIsSpecsOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [email, setEmail] = useState('');
+  const [mobileNumber, setMobileNumber] = useState('');
+  const [submitError, setSubmitError] = useState('');
+  const [submitSuccess, setSubmitSuccess] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [quotationFor, setQuotationFor] = useState({
+    company: '',
+    name: '',
+    location: '',
+    kindAttn: '',
+    reference: '',
+  });
   
   // Custom Country Select State
-  const [countryCode, setCountryCode] = useState('+49');
+  const [countryCode, setCountryCode] = useState('+91');
   const [isCountryOpen, setIsCountryOpen] = useState(false);
 
   useEffect(() => {
@@ -37,6 +50,93 @@ export function ProductRequestModal({ isOpen, onClose, productCode }: ProductReq
     { code: '+91', label: 'IN' },
     { code: '+44', label: 'UK' },
   ];
+
+  const handleSubmitRequest = async () => {
+    setSubmitError('');
+    setSubmitSuccess('');
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedMobile = `${countryCode}${mobileNumber.trim()}`;
+    const normalizedQuotationFor = {
+      company: quotationFor.company.trim(),
+      name: quotationFor.name.trim(),
+      location: quotationFor.location.trim(),
+      kindAttn: quotationFor.kindAttn.trim(),
+      phone: normalizedMobile,
+      email: normalizedEmail,
+      reference: quotationFor.reference.trim(),
+    };
+    const validItems = items
+      .map((item) => ({ product: item.product.trim(), quantity: Number(item.quantity) || 0 }))
+      .filter((item) => item.product && item.quantity > 0);
+
+    if (!normalizedEmail) {
+      setSubmitError('Email address is required.');
+      return;
+    }
+
+    if (!mobileNumber.trim()) {
+      setSubmitError('Mobile number is required.');
+      return;
+    }
+
+    if (!normalizedQuotationFor.company || !normalizedQuotationFor.name || !normalizedQuotationFor.location || !normalizedQuotationFor.kindAttn) {
+      setSubmitError('Please fill all required "Quotation For" fields.');
+      return;
+    }
+
+    if (validItems.length === 0) {
+      setSubmitError('Add at least one valid product with quantity.');
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      const primaryItem = validItems[0];
+
+      const response = await fetch(`${API_URL}/api/leads`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productName: primaryItem.product,
+          requesterEmail: normalizedEmail,
+          contactNumber: normalizedMobile,
+          quantity: primaryItem.quantity,
+          quantityRequested: primaryItem.quantity,
+          items: validItems,
+          status: 'pending',
+          quotationFor: normalizedQuotationFor,
+        }),
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        const fallback =
+          response.status === 503
+            ? 'Database unavailable. Check that the backend can reach MongoDB Atlas.'
+            : 'Failed to submit request';
+        throw new Error(payload.message || fallback);
+      }
+
+      setSubmitSuccess('Request submitted successfully.');
+      setEmail('');
+      setMobileNumber('');
+      setQuotationFor({
+        company: '',
+        name: '',
+        location: '',
+        kindAttn: '',
+        reference: '',
+      });
+      setItems([{ product: productCode, quantity: 1 }]);
+      setIsSpecsOpen(false);
+      setIsCountryOpen(false);
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : 'Failed to submit request');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
@@ -61,7 +161,13 @@ export function ProductRequestModal({ isOpen, onClose, productCode }: ProductReq
            <div className="space-y-4">
               <div>
                 <label className="block font-bold uppercase text-xs mb-1">Email Address</label>
-                <input type="email" className="w-full border-2 border-black p-2.5 font-mono text-sm focus:outline-none focus:bg-neutral-50 focus:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-shadow" placeholder="your@email.com" />
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full border-2 border-black p-2.5 font-mono text-sm focus:outline-none focus:bg-neutral-50 focus:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-shadow"
+                  placeholder="your@email.com"
+                />
               </div>
               
               <div>
@@ -100,7 +206,69 @@ export function ProductRequestModal({ isOpen, onClose, productCode }: ProductReq
                        </AnimatePresence>
                    </div>
 
-                   <input type="tel" className="w-full border-2 border-black p-2.5 font-mono text-sm focus:outline-none focus:bg-neutral-50 focus:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-shadow" placeholder="123 456 7890" />
+                   <input
+                     type="tel"
+                     value={mobileNumber}
+                     onChange={(e) => setMobileNumber(e.target.value)}
+                     className="w-full border-2 border-black p-2.5 font-mono text-sm focus:outline-none focus:bg-neutral-50 focus:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-shadow"
+                     placeholder="123 456 7890"
+                   />
+                </div>
+              </div>
+
+              <div className="pt-2 border-t-2 border-neutral-200">
+                <p className="font-bold uppercase text-xs mb-2">Quotation For</p>
+                <div className="space-y-2.5">
+                  <div>
+                    <label className="block font-bold uppercase text-xs mb-1">Company *</label>
+                    <input
+                      type="text"
+                      value={quotationFor.company}
+                      onChange={(e) => setQuotationFor(prev => ({ ...prev, company: e.target.value }))}
+                      className="w-full border-2 border-black p-2.5 font-mono text-sm focus:outline-none focus:bg-neutral-50 focus:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-shadow"
+                      placeholder="Company name"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-bold uppercase text-xs mb-1">Name *</label>
+                    <input
+                      type="text"
+                      value={quotationFor.name}
+                      onChange={(e) => setQuotationFor(prev => ({ ...prev, name: e.target.value }))}
+                      className="w-full border-2 border-black p-2.5 font-mono text-sm focus:outline-none focus:bg-neutral-50 focus:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-shadow"
+                      placeholder="Contact person or company name"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-bold uppercase text-xs mb-1">Location *</label>
+                    <textarea
+                      value={quotationFor.location}
+                      onChange={(e) => setQuotationFor(prev => ({ ...prev, location: e.target.value }))}
+                      rows={2}
+                      className="w-full border-2 border-black p-2.5 font-mono text-sm focus:outline-none focus:bg-neutral-50 focus:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-shadow resize-none"
+                      placeholder="Full location / address"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-bold uppercase text-xs mb-1">Kind Attn *</label>
+                    <input
+                      type="text"
+                      value={quotationFor.kindAttn}
+                      onChange={(e) => setQuotationFor(prev => ({ ...prev, kindAttn: e.target.value }))}
+                      className="w-full border-2 border-black p-2.5 font-mono text-sm focus:outline-none focus:bg-neutral-50 focus:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-shadow"
+                      placeholder="Attention to"
+                    />
+                  </div>
+                  <div>
+                      <label className="block font-bold uppercase text-xs mb-1">Ref</label>
+                      <input
+                        type="text"
+                        value={quotationFor.reference}
+                        onChange={(e) => setQuotationFor(prev => ({ ...prev, reference: e.target.value }))}
+                        className="w-full border-2 border-black p-2.5 font-mono text-sm focus:outline-none focus:bg-neutral-50 focus:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-shadow"
+                        placeholder="Reference"
+                      />
+                  </div>
                 </div>
               </div>
 
@@ -124,9 +292,15 @@ export function ProductRequestModal({ isOpen, onClose, productCode }: ProductReq
            </div>
 
            <div className="mt-6">
-                <button className="w-full bg-black text-white p-3 font-black uppercase tracking-widest hover:bg-neutral-800 transition-all hover:-translate-y-1 hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,0.2)] text-sm">
-                  Submit Request
+                <button
+                  onClick={handleSubmitRequest}
+                  disabled={isSubmitting}
+                  className="w-full bg-black text-white p-3 font-black uppercase tracking-widest hover:bg-neutral-800 transition-all hover:-translate-y-1 hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,0.2)] text-sm disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none"
+                >
+                  {isSubmitting ? 'Submitting...' : 'Submit Request'}
                 </button>
+                {submitError ? <p className="mt-2 text-xs font-mono text-red-600">{submitError}</p> : null}
+                {submitSuccess ? <p className="mt-2 text-xs font-mono text-green-700">{submitSuccess}</p> : null}
            </div>
         </div>
 
